@@ -1,0 +1,7 @@
+.env
+service_account.json
+*.sqlite3
+__pycache__/
+node_modules/
+dist/
+.venv/
