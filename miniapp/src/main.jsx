@@ -23,7 +23,6 @@ const IMAGE_SOURCES = {
   hello: "/Привет 2.png",
   myBookings: "/Мои Записи 2.png",
   noBookings: "/no-bookings-cat.png",
-  sleep: "/cat-sleep.png",
   services: "/к Услугам.png",
   date: "/Дата.png",
   noSlots: "/Время на релакс.png",
