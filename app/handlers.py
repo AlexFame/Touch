@@ -17,7 +17,6 @@ from app.keyboards import (
     book_shortcut_kb,
     confirm_kb,
     dates_kb,
-    language_kb,
     main_menu_kb,
     main_menu_webapp_kb,
     open_miniapp_kb,
@@ -29,11 +28,22 @@ from app.validation import normalize_contact, normalize_name, valid_contact, val
 
 router = Router()
 
-WELCOME_TEXT = (
-    "🐾 Добро пожаловать!\n\n"
-    "Здесь можно быстро записаться на массаж и управлять своими визитами в приложении.\n\n"
-    "Нажмите «Открыть», чтобы выбрать удобное время."
-)
+WELCOME_TEXTS = {
+    "ru": (
+        "Добро пожаловать в массажную студию «Прикосновение» 🐾\n\n"
+        "Здесь вы можете быстро записаться на массаж, выбрать удобное время и управлять своими визитами в приложении.\n\n"
+        "Нажмите «Открыть», чтобы выбрать услугу, дату и время.\n\n"
+        "Важно: мы не являемся врачами или физиотерапевтами и не оказываем лечебные или медицинские услуги. "
+        "Все процедуры направлены на расслабление, восстановление сил и общее самочувствие."
+    ),
+    "ua": (
+        "Ласкаво просимо до масажної студії «Прикосновение» 🐾\n\n"
+        "Тут ви можете швидко записатися на масаж, вибрати зручний час і керувати своїми візитами в застосунку.\n\n"
+        "Натисніть «Відкрити», щоб вибрати послугу, дату і час.\n\n"
+        "Важливо: ми не є лікарями або фізіотерапевтами і не надаємо лікувальні або медичні послуги. "
+        "Усі процедури спрямовані на розслаблення, відновлення сил і загальне самопочуття."
+    ),
+}
 
 
 def is_admin(user_id: int, settings: Settings) -> bool:
@@ -43,6 +53,15 @@ def is_admin(user_id: int, settings: Settings) -> bool:
 async def get_lang(user_id: int) -> str:
     client = await db_ensure_client(user_id)
     return client["lang"]
+
+
+def telegram_lang(user) -> str:
+    code = (getattr(user, "language_code", None) or "").lower()
+    return "ua" if code.startswith("uk") else "ru"
+
+
+def welcome_text(lang: str) -> str:
+    return WELCOME_TEXTS["ua" if lang == "ua" else "ru"]
 
 
 def _html_escape(value) -> str:
@@ -92,12 +111,15 @@ async def get_appointment_admin_summary(appointment_id: int) -> str:
 @router.message(CommandStart())
 async def start(message: Message, state: FSMContext, settings: Settings) -> None:
     await state.clear()
-    await db_ensure_client(message.from_user.id)
+    lang = telegram_lang(message.from_user)
+    await db_ensure_client(message.from_user.id, lang)
+    await db_update_client_lang(message.from_user.id, lang)
     await message.answer(
-        WELCOME_TEXT,
+        welcome_text(lang),
         reply_markup=open_miniapp_kb(
             settings.webapp_url,
             is_admin=is_admin(message.from_user.id, settings),
+            lang=lang,
         ),
     )
 
@@ -109,10 +131,11 @@ async def set_language(call: CallbackQuery, settings: Settings, state: FSMContex
     await db_update_client_lang(call.from_user.id, lang)
     await state.clear()
     await call.message.answer(
-        WELCOME_TEXT,
+        welcome_text(lang),
         reply_markup=open_miniapp_kb(
             settings.webapp_url,
             is_admin=is_admin(call.from_user.id, settings),
+            lang=lang,
         ),
     )
     await call.answer()

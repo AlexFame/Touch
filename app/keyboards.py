@@ -6,12 +6,12 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.i18n import t
 
 
-def open_miniapp_kb(webapp_url: str, is_admin: bool = False) -> InlineKeyboardMarkup | None:
+def open_miniapp_kb(webapp_url: str, is_admin: bool = False, lang: str = "ru") -> InlineKeyboardMarkup | None:
     if not webapp_url and not is_admin:
         return None
     kb = InlineKeyboardBuilder()
     if webapp_url:
-        kb.button(text="Открыть", web_app=WebAppInfo(url=webapp_url))
+        kb.button(text="Відкрити" if lang == "ua" else "Открыть", web_app=WebAppInfo(url=webapp_url))
     if is_admin:
         kb.button(text="👨‍💼 Админка", callback_data="admin:menu")
     kb.adjust(1)
