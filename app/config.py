@@ -35,6 +35,8 @@ class Settings:
     google_service_account_file: str
     google_review_url: str
     booking_days_ahead: int
+    app_env: str
+    allowed_origins: list[str]
 
     @property
     def tzinfo(self) -> ZoneInfo:
@@ -52,6 +54,18 @@ def get_settings() -> Settings:
         raise RuntimeError("ADMIN_IDS is missing. Add your Telegram user id to .env")
 
     dev_raw = os.getenv("DEV_TELEGRAM_ID", "").strip()
+    app_env = os.getenv("APP_ENV", "development").strip().lower()
+
+    # DEV_TELEGRAM_ID must never work in production regardless of what's in .env
+    dev_telegram_id = int(dev_raw) if dev_raw and app_env != "production" else None
+
+    origins_raw = os.getenv("ALLOWED_ORIGINS", "").strip()
+    if origins_raw:
+        allowed_origins = [o.strip() for o in origins_raw.split(",") if o.strip()]
+    elif app_env == "production":
+        allowed_origins = []
+    else:
+        allowed_origins = ["*"]
 
     return Settings(
         bot_token=token,
@@ -62,10 +76,12 @@ def get_settings() -> Settings:
         slot_step_minutes=_int("SLOT_STEP_MINUTES", 30),
         buffer_minutes=_int("BUFFER_MINUTES", 15),
         webapp_url=os.getenv("WEBAPP_URL", "").strip(),
-        dev_telegram_id=int(dev_raw) if dev_raw else None,
+        dev_telegram_id=dev_telegram_id,
         calendar_enabled=_bool("CALENDAR_ENABLED", False),
         google_calendar_id=os.getenv("GOOGLE_CALENDAR_ID", "primary"),
         google_service_account_file=os.getenv("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json"),
         google_review_url=os.getenv("GOOGLE_REVIEW_URL", ""),
         booking_days_ahead=_int("BOOKING_DAYS_AHEAD", 30),
+        app_env=app_env,
+        allowed_origins=allowed_origins,
     )

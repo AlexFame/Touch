@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import json
+import logging
 from datetime import date, datetime, timedelta
 from urllib.parse import parse_qsl
 
@@ -29,7 +30,7 @@ app = FastAPI(title="Massage Touch Mini App API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,9 +57,24 @@ class RescheduleRequest(BaseModel):
     lang: str = "ru"
 
 
+logger = logging.getLogger("uvicorn.error")
+
+
 @app.on_event("startup")
 async def startup() -> None:
     await init_db()
+    if settings.dev_telegram_id:
+        logger.warning(
+            "DEV AUTH BYPASS ENABLED — all unauthenticated requests will be treated as "
+            "Telegram user id=%s. Set APP_ENV=production to disable.",
+            settings.dev_telegram_id,
+        )
+    else:
+        logger.info("Dev auth bypass DISABLED (APP_ENV=%s).", settings.app_env)
+    if settings.allowed_origins == ["*"]:
+        logger.warning("CORS: wildcard origins allowed. Set ALLOWED_ORIGINS in production.")
+    else:
+        logger.info("CORS allowed origins: %s", settings.allowed_origins or "(none)")
 
 
 @app.on_event("shutdown")
