@@ -805,10 +805,10 @@ async def db_get_booked_appointments_for_date(day_iso: str) -> list[DBRow]:
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at LIKE $1
-                ORDER BY a.starts_at
+                AND a.starts_at::date = $1::date
+                ORDER BY a.starts_at::timestamptz
                 """,
-                day_iso + "%",
+                day_iso,
             )
             return [DBRow(dict(r)) for r in rows]
     else:
@@ -841,8 +841,8 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at >= $1
-                ORDER BY a.starts_at
+                AND a.starts_at::timestamptz >= $1::timestamptz
+                ORDER BY a.starts_at::timestamptz
                 LIMIT $2
                 """,
                 from_iso,
@@ -859,8 +859,8 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at >= ?
-                ORDER BY a.starts_at
+                AND datetime(a.starts_at) >= datetime(?)
+                ORDER BY datetime(a.starts_at)
                 LIMIT ?
                 """,
                 (from_iso, limit),

@@ -68,6 +68,17 @@ def _html_escape(value) -> str:
     return html.escape(str(value or ""))
 
 
+def _format_admin_status(status: str | None) -> str:
+    labels = {
+        "booked": "запланирована",
+        "completed": "завершена",
+        "cancelled": "отменена",
+        "no_show": "клиент не пришёл",
+        "rescheduled": "перенесена",
+    }
+    return labels.get(status or "", status or "-")
+
+
 def _format_admin_contact(row) -> str:
     final_contact = row["contact"] if "contact" in row.keys() and row["contact"] else row.get("phone")
     telegram_id = row.get("telegram_id")
@@ -97,7 +108,7 @@ def _format_admin_appointment(row) -> str:
         f"Цена: {row['price_eur']}€\n"
         f"Клиент: {_html_escape(row.get('name') or 'Без имени')}\n"
         f"{_format_admin_contact(row)}\n"
-        f"Статус: {_html_escape(row.get('status') or '-')}"
+        f"Статус: {_html_escape(_format_admin_status(row.get('status')))}"
     )
 
 
