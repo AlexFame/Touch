@@ -22,7 +22,7 @@ const MIME = {
 
 async function serve(req, res) {
   try {
-    const urlPath = new URL(req.url, "http://x").pathname;
+    const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
 
     const candidates = [
       join(DIST, urlPath),
