@@ -202,12 +202,21 @@ const NAME_PATTERN = /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’ -]+$/;
 const USERNAME_PATTERN = /^@[A-Za-z0-9_]{5,32}$/;
 const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{5,20}[0-9]$/;
 
+function normalizeName(value) {
+  return value
+    .trim()
+    .replace(/[^\p{L}'’ -]+/gu, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function isValidName(value) {
-  const clean = value.trim();
+  const clean = normalizeName(value);
   return (
     clean.length >= 2 &&
     clean.length <= 60 &&
-    !LINK_PATTERN.test(clean) &&
+    !LINK_PATTERN.test(value) &&
+    !/\p{N}/u.test(value) &&
     NAME_PATTERN.test(clean) &&
     [...clean].some((char) => /\p{L}/u.test(char))
   );
@@ -416,7 +425,7 @@ function App() {
 
   async function submitBooking() {
     setError("");
-    const cleanName = name.trim();
+    const cleanName = normalizeName(name);
     const cleanContact = normalizeContact(contact);
     if (!isValidName(cleanName)) {
       setError(tr.invalidName);

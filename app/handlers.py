@@ -25,7 +25,7 @@ from app.keyboards import (
     slots_kb,
 )
 from app.states import BookingState
-from app.validation import normalize_contact, valid_contact, valid_name
+from app.validation import normalize_contact, normalize_name, valid_contact, valid_name
 
 router = Router()
 
@@ -265,7 +265,7 @@ async def choose_time(call: CallbackQuery, state: FSMContext) -> None:
 @router.message(BookingState.entering_name)
 async def enter_name(message: Message, state: FSMContext) -> None:
     lang = await get_lang(message.from_user.id)
-    name = (message.text or "").strip()
+    name = normalize_name(message.text)
     if not valid_name(name):
         await message.answer(t(lang, "invalid_name"))
         return

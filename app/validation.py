@@ -5,13 +5,23 @@ LINK_RE = re.compile(r"(https?://|www\.|t\.me/|telegram\.me/|\S+\.\S{2,})", re.I
 NAME_RE = re.compile(r"^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’ -]+$")
 TELEGRAM_USERNAME_RE = re.compile(r"^@[A-Za-z0-9_]{5,32}$")
 PHONE_RE = re.compile(r"^\+?[0-9][0-9 ()-]{5,20}[0-9]$")
+NAME_UNSUPPORTED_RE = re.compile(r"[^A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’ -]+")
+
+
+def normalize_name(value: str | None) -> str:
+    name = (value or "").strip()
+    name = NAME_UNSUPPORTED_RE.sub("", name)
+    return re.sub(r"\s+", " ", name).strip()
 
 
 def valid_name(value: str | None) -> bool:
-    name = (value or "").strip()
+    raw = value or ""
+    name = normalize_name(raw)
     if not 2 <= len(name) <= 60:
         return False
-    if LINK_RE.search(name):
+    if LINK_RE.search(raw):
+        return False
+    if any(ch.isdigit() for ch in raw):
         return False
     return bool(NAME_RE.fullmatch(name)) and any(ch.isalpha() for ch in name)
 

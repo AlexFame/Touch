@@ -22,7 +22,7 @@ from app.database import (
     db_get_active_bookings, db_get_client_appointment, db_get_appointment_admin_summary_data,
     db_get_google_event_id,
 )
-from app.validation import normalize_contact, valid_contact, valid_name
+from app.validation import normalize_contact, normalize_name, valid_contact, valid_name
 
 settings = get_settings()
 app = FastAPI(title="Massage Touch Mini App API")
@@ -115,7 +115,7 @@ def service_title(row, lang: str) -> str:
 
 
 def validate_client_fields(name: str, contact: str | None) -> tuple[str, str]:
-    clean_name = name.strip()
+    clean_name = normalize_name(name)
     clean_contact = normalize_contact(contact)
     if not valid_name(clean_name):
         raise HTTPException(status_code=422, detail="Invalid name")
