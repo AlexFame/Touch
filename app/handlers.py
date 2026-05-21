@@ -25,6 +25,7 @@ from app.keyboards import (
     slots_kb,
 )
 from app.states import BookingState
+from app.validation import normalize_contact, valid_contact, valid_name
 
 router = Router()
 
@@ -201,7 +202,7 @@ async def my_booking_handler(call: CallbackQuery, settings: Settings) -> None:
 @router.callback_query(F.data == "menu:book")
 async def book_start(call: CallbackQuery, state: FSMContext) -> None:
     lang = await get_lang(call.from_user.id)
-    services = await db_get_services()
+    services = await db_get_services(exclude_packages=True)
     await state.set_state(BookingState.choosing_service)
     await call.message.edit_text(t(lang, "choose_service"), reply_markup=services_kb(services, lang))
     await call.answer()
@@ -264,7 +265,10 @@ async def choose_time(call: CallbackQuery, state: FSMContext) -> None:
 @router.message(BookingState.entering_name)
 async def enter_name(message: Message, state: FSMContext) -> None:
     lang = await get_lang(message.from_user.id)
-    name = message.text.strip()
+    name = (message.text or "").strip()
+    if not valid_name(name):
+        await message.answer(t(lang, "invalid_name"))
+        return
     await state.update_data(name=name)
     await state.set_state(BookingState.entering_contact)
     await message.answer(t(lang, "ask_contact"))
@@ -273,7 +277,10 @@ async def enter_name(message: Message, state: FSMContext) -> None:
 @router.message(BookingState.entering_contact)
 async def enter_contact(message: Message, state: FSMContext, settings: Settings) -> None:
     lang = await get_lang(message.from_user.id)
-    contact = message.text.strip()
+    contact = normalize_contact(message.text or "")
+    if not valid_contact(contact):
+        await message.answer(t(lang, "invalid_contact"))
+        return
     data = await state.get_data()
     service = await db_get_service(data["service_id"])
     client = await db_ensure_client(message.from_user.id)
@@ -413,7 +420,7 @@ async def client_reschedule_visit(call: CallbackQuery, settings: Settings, state
         
     await state.update_data(reschedule_appointment_id=appointment_id)
 
-    services = await db_get_services()
+    services = await db_get_services(exclude_packages=True)
     await state.set_state(BookingState.choosing_service)
     await call.message.edit_text(t(lang, "client_reschedule") + "\n\n" + t(lang, "choose_service"), reply_markup=services_kb(services, lang))
     await call.answer()

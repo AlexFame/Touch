@@ -96,10 +96,23 @@ async def init_db() -> None:
             INSERT INTO services (id, title_ru, title_ua, duration_minutes, price_eur, is_package, package_sessions)
             VALUES 
                 ('classic_back', 'Классический массаж спины - 45 мин - 20€', 'Класичний масаж спини - 45 хв - 20€', 45, 20, 0, NULL),
+                ('classic_back_package_5', 'Классический массаж спины - курс 5 сеансов - 90€', 'Класичний масаж спини - курс 5 сеансів - 90€', 45, 90, 1, 5),
+                ('classic_back_package_10', 'Классический массаж спины - курс 10 сеансов - 175€', 'Класичний масаж спини - курс 10 сеансів - 175€', 45, 175, 1, 10),
+                ('child_wellness', 'Детский велнес-массаж - 30 мин - 15€', 'Дитячий велнес-масаж - 30 хв - 15€', 30, 15, 0, NULL),
+                ('child_wellness_package_5', 'Детский велнес-массаж - курс 5 сеансов - 60€', 'Дитячий велнес-масаж - курс 5 сеансів - 60€', 30, 60, 1, 5),
+                ('child_wellness_package_10', 'Детский велнес-массаж - курс 10 сеансов - 130€', 'Дитячий велнес-масаж - курс 10 сеансів - 130€', 30, 130, 1, 10),
                 ('general', 'Общий массаж - 90 мин - 70€', 'Загальний масаж - 90 хв - 70€', 90, 70, 0, NULL),
+                ('general_package_5', 'Общий массаж - курс 5 сеансов - 180€', 'Загальний масаж - курс 5 сеансів - 180€', 90, 180, 1, 5),
+                ('general_package_10', 'Общий массаж - курс 10 сеансов - 350€', 'Загальний масаж - курс 10 сеансів - 350€', 90, 350, 1, 10),
                 ('anti_cellulite', 'Антицеллюлитный массаж - 45 мин - 30€', 'Антицелюлітний масаж - 45 хв - 30€', 45, 30, 0, NULL),
+                ('anti_cellulite_package_5', 'Антицеллюлитный массаж - курс 5 сеансов - 135€', 'Антицелюлітний масаж - курс 5 сеансів - 135€', 45, 135, 1, 5),
+                ('anti_cellulite_package_10', 'Антицеллюлитный массаж - курс 10 сеансов - 260€', 'Антицелюлітний масаж - курс 10 сеансів - 260€', 45, 260, 1, 10),
                 ('sport', 'Спортивный массаж - 45 мин - 30€', 'Спортивний масаж - 45 хв - 30€', 45, 30, 0, NULL),
-                ('relax', 'Релакс-массаж - 45 мин - 20€', 'Релакс-масаж - 45 хв - 20€', 45, 20, 0, NULL)
+                ('sport_package_5', 'Спортивный массаж - курс 5 сеансов - 135€', 'Спортивний масаж - курс 5 сеансів - 135€', 45, 135, 1, 5),
+                ('sport_package_10', 'Спортивный массаж - курс 10 сеансов - 260€', 'Спортивний масаж - курс 10 сеансів - 260€', 45, 260, 1, 10),
+                ('relax', 'Релакс-массаж - 45 мин - 20€', 'Релакс-масаж - 45 хв - 20€', 45, 20, 0, NULL),
+                ('relax_package_5', 'Релакс-массаж - курс 5 сеансов - 90€', 'Релакс-масаж - курс 5 сеансів - 90€', 45, 90, 1, 5),
+                ('relax_package_10', 'Релакс-массаж - курс 10 сеансов - 175€', 'Релакс-масаж - курс 10 сеансів - 175€', 45, 175, 1, 10)
             ON CONFLICT (id) DO UPDATE SET 
                 title_ru = EXCLUDED.title_ru,
                 title_ua = EXCLUDED.title_ua,
@@ -176,10 +189,23 @@ async def init_db() -> None:
                 """,
                 [
                     ("classic_back", "Классический массаж спины - 45 мин - 20€", "Класичний масаж спини - 45 хв - 20€", 45, 20, 0, None),
+                    ("classic_back_package_5", "Классический массаж спины - курс 5 сеансов - 90€", "Класичний масаж спини - курс 5 сеансів - 90€", 45, 90, 1, 5),
+                    ("classic_back_package_10", "Классический массаж спины - курс 10 сеансов - 175€", "Класичний масаж спини - курс 10 сеансів - 175€", 45, 175, 1, 10),
+                    ("child_wellness", "Детский велнес-массаж - 30 мин - 15€", "Дитячий велнес-масаж - 30 хв - 15€", 30, 15, 0, None),
+                    ("child_wellness_package_5", "Детский велнес-массаж - курс 5 сеансов - 60€", "Дитячий велнес-масаж - курс 5 сеансів - 60€", 30, 60, 1, 5),
+                    ("child_wellness_package_10", "Детский велнес-массаж - курс 10 сеансов - 130€", "Дитячий велнес-масаж - курс 10 сеансів - 130€", 30, 130, 1, 10),
                     ("general", "Общий массаж - 90 мин - 70€", "Загальний масаж - 90 хв - 70€", 90, 70, 0, None),
+                    ("general_package_5", "Общий массаж - курс 5 сеансов - 180€", "Загальний масаж - курс 5 сеансів - 180€", 90, 180, 1, 5),
+                    ("general_package_10", "Общий массаж - курс 10 сеансов - 350€", "Загальний масаж - курс 10 сеансів - 350€", 90, 350, 1, 10),
                     ("anti_cellulite", "Антицеллюлитный массаж - 45 мин - 30€", "Антицелюлітний масаж - 45 хв - 30€", 45, 30, 0, None),
+                    ("anti_cellulite_package_5", "Антицеллюлитный массаж - курс 5 сеансов - 135€", "Антицелюлітний масаж - курс 5 сеансів - 135€", 45, 135, 1, 5),
+                    ("anti_cellulite_package_10", "Антицеллюлитный массаж - курс 10 сеансов - 260€", "Антицелюлітний масаж - курс 10 сеансів - 260€", 45, 260, 1, 10),
                     ("sport", "Спортивный массаж - 45 мин - 30€", "Спортивний масаж - 45 хв - 30€", 45, 30, 0, None),
+                    ("sport_package_5", "Спортивный массаж - курс 5 сеансов - 135€", "Спортивний масаж - курс 5 сеансів - 135€", 45, 135, 1, 5),
+                    ("sport_package_10", "Спортивный массаж - курс 10 сеансов - 260€", "Спортивний масаж - курс 10 сеансів - 260€", 45, 260, 1, 10),
                     ("relax", "Релакс-массаж - 45 мин - 20€", "Релакс-масаж - 45 хв - 20€", 45, 20, 0, None),
+                    ("relax_package_5", "Релакс-массаж - курс 5 сеансов - 90€", "Релакс-масаж - курс 5 сеансів - 90€", 45, 90, 1, 5),
+                    ("relax_package_10", "Релакс-массаж - курс 10 сеансов - 175€", "Релакс-масаж - курс 10 сеансів - 175€", 45, 175, 1, 10),
                 ],
             )
             await db.commit()
@@ -324,7 +350,7 @@ async def db_get_active_bookings(client_id: int, min_starts_at: str | None = Non
             if min_starts_at:
                 rows = await conn.fetch(
                     """
-                    SELECT a.*, s.title_ru, s.title_ua
+                    SELECT a.*, s.title_ru, s.title_ua, s.is_package, s.package_sessions
                     FROM appointments a
                     JOIN services s ON s.id = a.service_id
                     WHERE a.client_id = $1 AND a.status = 'booked' AND a.starts_at >= $2
@@ -334,7 +360,7 @@ async def db_get_active_bookings(client_id: int, min_starts_at: str | None = Non
             else:
                 rows = await conn.fetch(
                     """
-                    SELECT a.*, s.title_ru, s.title_ua
+                    SELECT a.*, s.title_ru, s.title_ua, s.is_package, s.package_sessions
                     FROM appointments a
                     JOIN services s ON s.id = a.service_id
                     WHERE a.client_id = $1 AND a.status = 'booked'
@@ -348,7 +374,7 @@ async def db_get_active_bookings(client_id: int, min_starts_at: str | None = Non
             if min_starts_at:
                 cur = await db.execute(
                     """
-                    SELECT a.*, s.title_ru, s.title_ua
+                    SELECT a.*, s.title_ru, s.title_ua, s.is_package, s.package_sessions
                     FROM appointments a
                     JOIN services s ON s.id = a.service_id
                     WHERE a.client_id = ? AND a.status = 'booked' AND a.starts_at >= ?
@@ -358,7 +384,7 @@ async def db_get_active_bookings(client_id: int, min_starts_at: str | None = Non
             else:
                 cur = await db.execute(
                     """
-                    SELECT a.*, s.title_ru, s.title_ua
+                    SELECT a.*, s.title_ru, s.title_ua, s.is_package, s.package_sessions
                     FROM appointments a
                     JOIN services s ON s.id = a.service_id
                     WHERE a.client_id = ? AND a.status = 'booked'

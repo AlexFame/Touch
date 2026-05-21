@@ -18,10 +18,11 @@ from app.database import (
     init_db, init_pool,
     db_ensure_client, db_update_client_profile,
     db_get_services, db_get_service,
-    db_create_appointment, db_update_appointment_google_event_id, db_update_appointment_status,
+    db_create_appointment, db_create_package, db_update_appointment_google_event_id, db_update_appointment_status,
     db_get_active_bookings, db_get_client_appointment, db_get_appointment_admin_summary_data,
     db_get_google_event_id,
 )
+from app.validation import normalize_contact, valid_contact, valid_name
 
 settings = get_settings()
 app = FastAPI(title="Massage Touch Mini App API")
@@ -113,6 +114,16 @@ def service_title(row, lang: str) -> str:
     return row["title_ua"] if lang in ("ua", "uk") else row["title_ru"]
 
 
+def validate_client_fields(name: str, contact: str | None) -> tuple[str, str]:
+    clean_name = name.strip()
+    clean_contact = normalize_contact(contact)
+    if not valid_name(clean_name):
+        raise HTTPException(status_code=422, detail="Invalid name")
+    if not valid_contact(clean_contact):
+        raise HTTPException(status_code=422, detail="Invalid contact")
+    return clean_name, clean_contact
+
+
 @app.get("/api/me")
 async def me(initData: str | None = Query(default=None), x_telegram_init_data: str | None = Header(default=None)):
     telegram_id = current_user_id(initData, x_telegram_init_data)
@@ -136,6 +147,8 @@ async def services(lang: str = "ru"):
             "title": service_title(r, lang),
             "duration_minutes": r["duration_minutes"],
             "price_eur": r["price_eur"],
+            "is_package": bool(r["is_package"]),
+            "package_sessions": r["package_sessions"],
         }
         for r in rows
     ]
@@ -160,7 +173,7 @@ async def slots(
     service = await db_get_service(service_id)
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
-    first_bonus = await first_visit_bonus_available(client["id"])
+    first_bonus = not bool(service["is_package"]) and await first_visit_bonus_available(client["id"])
     duration = service["duration_minutes"] + (15 if first_bonus else 0)
     free = await get_free_slots(day_iso, duration, settings, calendar)
     return {"slots": free, "duration_minutes": duration, "first_visit_bonus_applied": first_bonus}
@@ -177,21 +190,18 @@ async def create_booking(
     username = user.get("username")
     client = await db_ensure_client(telegram_id)
     
-    final_contact = payload.contact if payload.contact else payload.phone
-    if final_contact:
-        final_contact = final_contact.strip()
-        if not any(c.isdigit() for c in final_contact) and not final_contact.startswith("@"):
-            final_contact = "@" + final_contact
-    else:
-        final_contact = ""
+    clean_name, final_contact = validate_client_fields(
+        payload.name,
+        payload.contact if payload.contact else payload.phone,
+    )
 
-    await db_update_client_profile(telegram_id, payload.name.strip(), final_contact)
+    await db_update_client_profile(telegram_id, clean_name, final_contact)
 
     service = await db_get_service(payload.service_id)
     if not service:
         raise HTTPException(status_code=404, detail="Service not found")
 
-    first_bonus = await first_visit_bonus_available(client["id"])
+    first_bonus = not bool(service["is_package"]) and await first_visit_bonus_available(client["id"])
     duration = service["duration_minutes"] + (15 if first_bonus else 0)
     available_slots = await get_free_slots(payload.day_iso, duration, settings, calendar)
     if payload.slot not in available_slots:
@@ -208,7 +218,7 @@ async def create_booking(
         f"Время: {start.strftime('%H:%M')}\n"
         f"Длительность: {duration} мин\n"
         f"Цена: {service['price_eur']}€\n"
-        f"Имя: {payload.name.strip()}"
+        f"Имя: {clean_name}"
     )
     
     if final_contact.startswith("@"):
@@ -247,7 +257,7 @@ async def create_booking(
     )
 
     google_event_id = calendar.create_event(
-        summary=f"Massage - {payload.name.strip()} - {admin_title.split(' - ')[0]}",
+        summary=f"Massage - {clean_name} - {admin_title.split(' - ')[0]}",
         description=calendar_description + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
         start=start,
         end=end,
@@ -255,6 +265,10 @@ async def create_booking(
     )
     if google_event_id:
         await db_update_appointment_google_event_id(appointment_id, google_event_id)
+
+    if service["is_package"]:
+        expires = (start.date() + timedelta(days=90)).isoformat()
+        await db_create_package(client["id"], service["package_sessions"], expires)
 
     client_text = (
         "✅ Запись подтверждена\n\n"
@@ -276,6 +290,8 @@ async def create_booking(
         "time": start.strftime("%H:%M"),
         "duration_minutes": duration,
         "price_eur": service["price_eur"],
+        "is_package": bool(service["is_package"]),
+        "package_sessions": service["package_sessions"],
         "first_visit_bonus_applied": first_bonus,
     }
 
@@ -292,6 +308,8 @@ async def my_appointments(lang: str = "ru", initData: str | None = Query(default
             "starts_at": r["starts_at"],
             "duration_minutes": r["duration_minutes"],
             "price_eur": r["price_eur"],
+            "is_package": bool(r["is_package"]),
+            "package_sessions": r["package_sessions"],
             "status": r["status"],
         }
         for r in rows
@@ -312,6 +330,8 @@ async def active_bookings(lang: str = "ru", initData: str | None = Query(default
             "starts_at": row["starts_at"],
             "duration_minutes": row["duration_minutes"],
             "price_eur": row["price_eur"],
+            "is_package": bool(row["is_package"]),
+            "package_sessions": row["package_sessions"],
             "status": row["status"],
             "contact": client["contact"] if "contact" in client.keys() and client["contact"] else client["phone"],
         }
@@ -449,5 +469,7 @@ async def reschedule_booking_endpoint(
         "time": start.strftime("%H:%M"),
         "duration_minutes": duration,
         "price_eur": service["price_eur"],
+        "is_package": bool(service["is_package"]),
+        "package_sessions": service["package_sessions"],
         "first_visit_bonus_applied": first_bonus,
     }
