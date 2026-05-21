@@ -4,6 +4,7 @@ import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DIST = join(dirname(fileURLToPath(import.meta.url)), "dist");
+const HOST = process.env.HOST || "0.0.0.0";
 const PORT = process.env.PORT || 5173;
 
 const MIME = {
@@ -54,6 +55,13 @@ async function serve(req, res) {
   }
 }
 
-createServer(serve).listen(PORT, () => {
-  console.log(`miniapp served from ${DIST} on :${PORT}`);
+const server = createServer(serve);
+
+server.on("error", (err) => {
+  console.error("miniapp server failed:", err);
+  process.exit(1);
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`miniapp served from ${DIST} on ${HOST}:${PORT}`);
 });
