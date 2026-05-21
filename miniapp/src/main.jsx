@@ -6,6 +6,7 @@ import {
   DoneScreen,
   HomeScreen,
   MyBookingsScreen,
+  PackageChoiceScreen,
   ServiceDetailsScreen,
   ServicesScreen,
 } from "./screens";
@@ -13,7 +14,8 @@ import { UI_TEXT, apiLang, getInitialLang } from "./i18n";
 import { ErrorBox, Shell } from "./ui";
 import "./styles.css";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "";
+const API_BASE =
+  import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "";
 const tg = window.Telegram?.WebApp;
 const initData = tg?.initData || "";
 
@@ -29,6 +31,33 @@ const IMAGE_SOURCES = {
   waitAgain: "/Жду вас снова.png",
   thanks: "/cat-thanks.png",
   booked: "/Запись подтверждена .png",
+};
+
+const PACKAGE_PRICES = {
+  classic_back: {
+    5: { price: 90, original: 100 },
+    10: { price: 175, original: 200 },
+  },
+  relax: {
+    5: { price: 90, original: 100 },
+    10: { price: 175, original: 200 },
+  },
+  anti_cellulite: {
+    5: { price: 135, original: 150 },
+    10: { price: 260, original: 300 },
+  },
+  sport: {
+    5: { price: 135, original: 150 },
+    10: { price: 260, original: 300 },
+  },
+  child_wellness: {
+    5: { price: 60, original: 75 },
+    10: { price: 130, original: 150 },
+  },
+  general: {
+    5: { price: 180, original: 200 },
+    10: { price: 350, original: 400 },
+  },
 };
 
 const STARTUP_IMAGE_SOURCES = [IMAGE_SOURCES.hello];
@@ -70,6 +99,7 @@ const SESSION_STATE_KEY = "massageMiniAppState:v1";
 const VALID_STEPS = new Set([
   "home",
   "servicesInfo",
+  "packageChoice",
   "service",
   "day",
   "time",
@@ -100,6 +130,7 @@ function isRestorableState(data) {
   const needsService = data.step === "day" || data.step === "time" || data.step === "details";
   const needsDay = data.step === "time" || data.step === "details";
 
+  if (data.step === "packageChoice" && !data.selectedInfoService) return false;
   if (needsService && !data.selectedService) return false;
   if (needsDay && !data.selectedDay) return false;
   if (data.step === "details" && !data.selectedSlot) return false;
@@ -164,6 +195,43 @@ function formatDay(iso, lang = "ru") {
 function errorText(error, tr) {
   const message = error?.message || "";
   return tr.apiErrors?.[message] || message || tr.requestFailed;
+}
+
+const LINK_PATTERN = /(https?:\/\/|www\.|t\.me\/|telegram\.me\/|\S+\.\S{2,})/i;
+const NAME_PATTERN = /^[A-Za-zА-Яа-яЁёІіЇїЄєҐґ'’ -]+$/;
+const USERNAME_PATTERN = /^@[A-Za-z0-9_]{5,32}$/;
+const PHONE_PATTERN = /^\+?[0-9][0-9 ()-]{5,20}[0-9]$/;
+
+function isValidName(value) {
+  const clean = value.trim();
+  return (
+    clean.length >= 2 &&
+    clean.length <= 60 &&
+    !LINK_PATTERN.test(clean) &&
+    NAME_PATTERN.test(clean) &&
+    [...clean].some((char) => /\p{L}/u.test(char))
+  );
+}
+
+function normalizeContact(value) {
+  const clean = value.trim();
+  if (!clean) return "";
+  if (clean.startsWith("@")) return clean;
+  if (/\d/.test(clean)) return clean;
+  return `@${clean}`;
+}
+
+function isValidContact(value) {
+  const clean = normalizeContact(value);
+  if (!clean) return true;
+  if (LINK_PATTERN.test(clean)) return false;
+  if (clean.startsWith("@")) return USERNAME_PATTERN.test(clean);
+  const digits = clean.replace(/\D/g, "");
+  return digits.length >= 7 && digits.length <= 15 && PHONE_PATTERN.test(clean);
+}
+
+function serviceBaseTitle(service) {
+  return service.title.split(" - ")[0];
 }
 
 
@@ -303,16 +371,68 @@ function App() {
   const totalDuration =
     slotMeta?.duration_minutes || selectedService?.duration_minutes || 0;
   const bonus = Boolean(slotMeta?.first_visit_bonus_applied);
+  const canSubmitDetails = isValidName(name) && isValidContact(contact);
+  const packageOptions = selectedInfoService
+    ? createPackageOptions(selectedInfoService, tr)
+    : [];
+
+  function createPackageOptions(service, text) {
+    const prices = PACKAGE_PRICES[service.id] || {};
+    const baseTitle = serviceBaseTitle(service);
+    return [
+      {
+        ...service,
+        title: `${baseTitle} - ${text.singleSession} - ${service.price_eur}€`,
+        option_title: text.singleSession,
+        package_sessions: null,
+        package_original_price: null,
+        is_package: false,
+      },
+      ...[5, 10]
+        .filter((sessions) => prices[sessions])
+        .map((sessions) => ({
+          ...service,
+          id: `${service.id}_package_${sessions}`,
+          title: `${baseTitle} - ${sessions} ${text.sessions} - ${prices[sessions].price}€`,
+          option_title: sessions === 5 ? text.course5 : text.course10,
+          price_eur: prices[sessions].price,
+          package_sessions: sessions,
+          package_original_price: prices[sessions].original,
+          is_package: true,
+        })),
+    ];
+  }
+
+  function startBooking(serviceToBook, source = "servicesInfo") {
+    setSelectedService(serviceToBook);
+    setSelectedInfoService(null);
+    setSelectedDay(null);
+    setSelectedSlot(null);
+    setSlotMeta(null);
+    setSlots([]);
+    setBookingSource(source);
+    setStep("day");
+  }
 
   async function submitBooking() {
     setError("");
+    const cleanName = name.trim();
+    const cleanContact = normalizeContact(contact);
+    if (!isValidName(cleanName)) {
+      setError(tr.invalidName);
+      return;
+    }
+    if (!isValidContact(cleanContact)) {
+      setError(tr.invalidContact);
+      return;
+    }
     try {
       const payload = {
         service_id: selectedService.id,
         day_iso: selectedDay.iso,
         slot: selectedSlot,
-        name,
-        contact,
+        name: cleanName,
+        contact: cleanContact,
         lang: backendLang,
       };
       if (rescheduleBookingId) {
@@ -382,6 +502,8 @@ function App() {
       title: bookingToReschedule.title,
       duration_minutes: bookingToReschedule.duration_minutes,
       price_eur: bookingToReschedule.price_eur,
+      is_package: bookingToReschedule.is_package,
+      package_sessions: bookingToReschedule.package_sessions,
     });
     setStep("day");
   }
@@ -406,6 +528,7 @@ function App() {
   function goBack() {
     const backMap = {
       servicesInfo: "home",
+      packageChoice: "servicesInfo",
       service: "home",
       day: bookingSource,
       time: "day",
@@ -574,14 +697,11 @@ function App() {
                 imageSrc={IMAGE_SOURCES.services}
                 onBack={() => setSelectedInfoService(null)}
                 onBook={() => {
-                  setSelectedService(selectedInfoService);
-                  setSelectedInfoService(null);
-                  setSelectedDay(null);
-                  setSelectedSlot(null);
-                  setSlotMeta(null);
-                  setSlots([]);
-                  setBookingSource("servicesInfo");
-                  setStep("day");
+                  if (packageOptions.length > 1) {
+                    setStep("packageChoice");
+                    return;
+                  }
+                  startBooking(selectedInfoService, "servicesInfo");
                 }}
                 service={selectedInfoService}
                 tr={tr}
@@ -599,18 +719,22 @@ function App() {
             )
           )}
 
+          {step === "packageChoice" && selectedInfoService && (
+            <PackageChoiceScreen
+              onBack={() => setStep("servicesInfo")}
+              onSelect={(option) => startBooking(option, "servicesInfo")}
+              options={packageOptions}
+              service={selectedInfoService}
+              tr={tr}
+            />
+          )}
+
           {step === "service" && (
             <ServicesScreen
               imageSrc={IMAGE_SOURCES.date}
               onBack={() => setStep("home")}
               onSelectService={(s) => {
-                setSelectedService(s);
-                setSelectedDay(null);
-                setSelectedSlot(null);
-                setSlotMeta(null);
-                setSlots([]);
-                setBookingSource("service");
-                setStep("day");
+                startBooking(s, "service");
               }}
               services={services}
               title={tr.chooseMassage}
@@ -622,6 +746,7 @@ function App() {
             <BookingFlow
               bonus={bonus}
               contact={contact}
+              canSubmit={canSubmitDetails}
               days={days}
               error={error}
               formatDay={formatDay}

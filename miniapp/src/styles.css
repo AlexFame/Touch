@@ -178,9 +178,9 @@ h3 { margin: 0 0 6px; font-size: 17px; }
 .topbar button { width: 42px; height: 42px; border-radius: 15px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: white; font-size: 30px; line-height: 20px; }
 .topbar h2 { text-align: center; }
 .list { display: grid; gap: 12px; }
-.service-card { width: 100%; display: flex; align-items: stretch; justify-content: space-between; text-align: left; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: white; -webkit-appearance: none; appearance: none; min-height: 72px; }
-.service-card > div { display: flex; flex-direction: column; justify-content: center; flex: 1; padding: 14px 0; }
-.service-card p { margin: 0; color: var(--muted); }
+.service-card { width: 100%; display: flex; align-items: stretch; justify-content: space-between; gap: 12px; text-align: left; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: white; -webkit-appearance: none; appearance: none; min-height: 72px; }
+.service-card > div { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; padding: 14px 0; }
+.service-card p { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
 .service-card > span { display: inline-flex; align-items: center; align-self: center; flex-shrink: 0; gap: 4px; color: var(--purple-2); font-weight: 700; font-size: 14px; white-space: nowrap; background: rgba(154, 114, 223, .15); border: 1px solid rgba(154, 114, 223, .35); border-radius: 14px; padding: 8px 14px; }
 .service-card > span::after { content: '›'; font-size: 18px; line-height: 1; }
 .summary { display: grid; gap: 4px; margin-bottom: 14px; padding: 14px; background: rgba(255,255,255,.06); border: 1px solid var(--line); border-radius: 18px; color: var(--muted); }

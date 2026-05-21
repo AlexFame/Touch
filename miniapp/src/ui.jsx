@@ -42,13 +42,19 @@ export function TopBar({ title, onBack }) {
 }
 
 export function ServiceCard({ actionLabel, service, onClick, tr }) {
+  const meta = service.package_sessions
+    ? `${service.package_sessions} ${tr.sessions} · ${service.price_eur}€${
+        service.package_original_price
+          ? ` ${tr.insteadOf} ${service.package_original_price}€`
+          : ""
+      }`
+    : `${service.duration_minutes} ${tr.min} · ${service.price_eur}€`;
+
   return (
     <button className="service-card" onClick={onClick}>
       <div>
-        <h3>{service.title.split(" - ")[0]}</h3>
-        <p>
-          {service.duration_minutes} {tr.min} · {service.price_eur}€
-        </p>
+        <h3>{service.option_title || service.title.split(" - ")[0]}</h3>
+        <p>{meta}</p>
       </div>
       <span>{actionLabel || tr.select}</span>
     </button>
@@ -58,12 +64,13 @@ export function ServiceCard({ actionLabel, service, onClick, tr }) {
 export function Summary({ service, day, slot, duration, bonus, tr, lang, formatDay }) {
   if (!service) return null;
   const formatted = day ? formatDay(day.iso, lang) : null;
+  const meta = service.package_sessions
+    ? `${service.package_sessions} ${tr.sessions} · ${service.price_eur}€`
+    : `${duration || service.duration_minutes} ${tr.min} · ${service.price_eur}€`;
   return (
     <div className="summary">
       <b>{service.title.split(" - ")[0]}</b>
-      <span>
-        {duration || service.duration_minutes} {tr.min} · {service.price_eur}€
-      </span>
+      <span>{meta}</span>
       {formatted && (
         <span>
           {formatted.day} {formatted.month}

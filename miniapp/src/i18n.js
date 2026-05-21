@@ -19,6 +19,12 @@ export const UI_TEXT = {
     at: "в",
     home: "На главную",
     chooseMassage: "Выберите массаж",
+    chooseBookingType: "Выберите формат",
+    singleSession: "1 сеанс",
+    course5: "Курс 5 сеансов",
+    course10: "Курс 10 сеансов",
+    sessions: "сеансов",
+    insteadOf: "вместо",
     chooseDay: "Выберите день",
     chooseTime: "Выбрать время",
     freeTime: "Свободное время",
@@ -32,6 +38,8 @@ export const UI_TEXT = {
     contactForReply: "Контакт для связи",
     contactPlaceholder: "Телефон или @username",
     contactHelp: "Необязательно. Подтверждение и напоминание придут в Telegram.",
+    invalidName: "Введите настоящее имя без ссылок, цифр и символов.",
+    invalidContact: "Контакт должен быть телефоном или Telegram username, без ссылок.",
     confirmReschedule: "Подтвердить перенос",
     confirmBooking: "Подтвердить запись",
     rescheduledTitle: "Запись перенесена",
@@ -51,6 +59,8 @@ export const UI_TEXT = {
     serviceDescriptions: {
       classic_back:
         "Массаж для расслабления мышц спины, снятия напряжения после работы, сидячего образа жизни или физической нагрузки. Помогает почувствовать легкость, расслабление и комфорт в теле.",
+      child_wellness:
+        "Мягкий велнес-массаж для детей 7-13 лет для расслабления, комфорта и ощущения легкости. Проводится деликатно, только с согласия и в присутствии родителей. Не является медицинской или лечебной процедурой.",
       relax:
         "Мягкий расслабляющий массаж для отдыха, снижения напряжения и восстановления внутреннего спокойствия. Подойдет, если хочется просто выдохнуть, переключиться и уделить время себе.",
       anti_cellulite:
@@ -64,6 +74,8 @@ export const UI_TEXT = {
       "Booking not found": "Запись не найдена",
       "Service not found": "Услуга не найдена",
       "Slot is no longer available": "Это время уже занято",
+      "Invalid name": "Введите настоящее имя без ссылок, цифр и символов.",
+      "Invalid contact": "Контакт должен быть телефоном или Telegram username, без ссылок.",
       "Open this page from Telegram Mini App": "Откройте страницу из Telegram Mini App",
       "Telegram initData is missing": "Не удалось получить данные Telegram",
       "Telegram hash is missing": "Не удалось проверить данные Telegram",
@@ -92,6 +104,12 @@ export const UI_TEXT = {
     at: "о",
     home: "На головну",
     chooseMassage: "Оберіть масаж",
+    chooseBookingType: "Оберіть формат",
+    singleSession: "1 сеанс",
+    course5: "Курс 5 сеансів",
+    course10: "Курс 10 сеансів",
+    sessions: "сеансів",
+    insteadOf: "замість",
     chooseDay: "Оберіть день",
     chooseTime: "Обрати час",
     freeTime: "Вільний час",
@@ -105,6 +123,8 @@ export const UI_TEXT = {
     contactForReply: "Контакт для зв'язку",
     contactPlaceholder: "Телефон або @username",
     contactHelp: "Необов'язково. Підтвердження і нагадування прийдуть у Telegram.",
+    invalidName: "Введіть справжнє ім'я без посилань, цифр і символів.",
+    invalidContact: "Контакт має бути телефоном або Telegram username, без посилань.",
     confirmReschedule: "Підтвердити перенесення",
     confirmBooking: "Підтвердити запис",
     rescheduledTitle: "Запис перенесено",
@@ -124,6 +144,8 @@ export const UI_TEXT = {
     serviceDescriptions: {
       classic_back:
         "Масаж для розслаблення м'язів спини, зняття напруги після роботи, сидячого способу життя або фізичного навантаження. Допомагає відчути легкість, розслаблення та комфорт у тілі.",
+      child_wellness:
+        "М'який велнес-масаж для дітей 7-13 років для розслаблення, комфорту та відчуття легкості. Проводиться делікатно, тільки за згодою і в присутності батьків. Не є медичною або лікувальною процедурою.",
       relax:
         "М'який розслаблюючий масаж для відпочинку, зниження напруги та відновлення внутрішнього спокою. Підійде, якщо хочеться просто видихнути, переключитися і приділити час собі.",
       anti_cellulite:
@@ -137,6 +159,8 @@ export const UI_TEXT = {
       "Booking not found": "Запис не знайдено",
       "Service not found": "Послугу не знайдено",
       "Slot is no longer available": "Цей час уже зайнятий",
+      "Invalid name": "Введіть справжнє ім'я без посилань, цифр і символів.",
+      "Invalid contact": "Контакт має бути телефоном або Telegram username, без посилань.",
       "Open this page from Telegram Mini App": "Відкрийте сторінку з Telegram Mini App",
       "Telegram initData is missing": "Не вдалося отримати дані Telegram",
       "Telegram hash is missing": "Не вдалося перевірити дані Telegram",

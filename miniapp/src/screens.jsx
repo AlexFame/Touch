@@ -261,8 +261,40 @@ export function ServiceDetailsScreen({
   );
 }
 
+export function PackageChoiceScreen({
+  onBack,
+  onSelect,
+  options,
+  service,
+  tr,
+}) {
+  return (
+    <>
+      <TopBar title={tr.chooseBookingType} onBack={onBack} />
+      <div className="summary service-details">
+        <b>{service.title.split(" - ")[0]}</b>
+        <span>
+          {service.duration_minutes} {tr.min} · {service.price_eur}€
+        </span>
+      </div>
+      <div className="list">
+        {options.map((option) => (
+          <ServiceCard
+            key={option.id}
+            actionLabel={tr.select}
+            service={option}
+            tr={tr}
+            onClick={() => onSelect(option)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
 export function BookingFlow({
   bonus,
+  canSubmit,
   contact,
   days,
   error,
@@ -390,6 +422,7 @@ export function BookingFlow({
           <input
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
+            maxLength={60}
             placeholder={tr.namePlaceholder}
           />
         </label>
@@ -398,6 +431,7 @@ export function BookingFlow({
           <input
             value={contact}
             onChange={(e) => onContactChange(e.target.value)}
+            maxLength={40}
             placeholder={tr.contactPlaceholder}
           />
           <small
@@ -410,7 +444,7 @@ export function BookingFlow({
         {error && <ErrorBox text={error} />}
       </div>
       <div className="section-footer">
-        <button className="primary" disabled={!name} onClick={onSubmit} style={{ marginTop: 0 }}>
+        <button className="primary" disabled={!canSubmit} onClick={onSubmit} style={{ marginTop: 0 }}>
           {rescheduleBookingId ? tr.confirmReschedule : tr.confirmBooking}
         </button>
       </div>
