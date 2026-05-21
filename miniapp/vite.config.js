@@ -1,12 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const allowedHosts = [
-  "arena-bonding-rewrite.ngrok-free.dev",
-  "unique-blessing-production.up.railway.app",
-  ".up.railway.app",
-  ".railway.app",
-];
+const allowedHosts = true;
 
 export default defineConfig({
   plugins: [react()],
