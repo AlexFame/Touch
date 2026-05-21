@@ -384,7 +384,7 @@ function App() {
       }
 
       const keyboardOpen = keyboardInset >= 80;
-      const appHeight = keyboardOpen ? visibleHeight + offsetTop : baseHeight;
+      const appHeight = baseHeight;
 
       root.style.setProperty("--app-height", `${appHeight}px`);
       root.style.setProperty("--keyboard-inset", `${keyboardInset}px`);

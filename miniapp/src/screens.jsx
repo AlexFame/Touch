@@ -393,6 +393,12 @@ export function BookingFlow({
     );
   }
 
+  const blurOnEnter = (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    event.currentTarget.blur();
+  };
+
   return (
     <>
       <div className="section-scroll">
@@ -426,6 +432,7 @@ export function BookingFlow({
           <input
             value={name}
             onChange={(e) => onNameChange(e.target.value)}
+            onKeyDown={blurOnEnter}
             maxLength={60}
             placeholder={tr.namePlaceholder}
           />
@@ -435,6 +442,7 @@ export function BookingFlow({
           <input
             value={contact}
             onChange={(e) => onContactChange(e.target.value)}
+            onKeyDown={blurOnEnter}
             maxLength={40}
             placeholder={tr.contactPlaceholder}
           />
