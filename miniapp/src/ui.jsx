@@ -101,18 +101,29 @@ export function ErrorBox({ text }) {
   return <div className="error">{text}</div>;
 }
 
-export function CalendarGrid({ days, selectedDay, onSelect, tr }) {
+export function CalendarGrid({ days, lang, selectedDay, onSelect, tr }) {
   if (!days || days.length === 0) return null;
 
   // Найти день недели первого дня (0=вс,1=пн,...6=сб) -> привести к пн=0
   const firstDate = new Date(days[0].iso + "T12:00:00");
+  const lastDate = new Date(days[days.length - 1].iso + "T12:00:00");
   const firstWeekday = (firstDate.getDay() + 6) % 7; // пн=0, вт=1 ... вс=6
+  const locale = lang === "uk" ? "uk-UA" : "ru-RU";
+  const monthFormatter = new Intl.DateTimeFormat(locale, { month: "long" });
+  const yearFormatter = new Intl.DateTimeFormat(locale, { year: "numeric" });
+  const sameMonth =
+    firstDate.getMonth() === lastDate.getMonth() &&
+    firstDate.getFullYear() === lastDate.getFullYear();
+  const monthTitle = sameMonth
+    ? `${monthFormatter.format(firstDate)} ${yearFormatter.format(firstDate)}`
+    : `${monthFormatter.format(firstDate)} - ${monthFormatter.format(lastDate)} ${yearFormatter.format(lastDate)}`;
 
   // Пустые ячейки в начале
   const empties = Array(firstWeekday).fill(null);
 
   return (
     <div className="cal-wrap">
+      <div className="cal-month">{monthTitle}</div>
       <div className="cal-weekdays">
         {tr.weekdays.map((w) => (
           <div key={w} className="cal-wd">{w}</div>

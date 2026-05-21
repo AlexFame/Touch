@@ -340,6 +340,7 @@ export function BookingFlow({
           <Summary service={selectedService} tr={tr} lang={lang} formatDay={formatDay} />
           <CalendarGrid
             days={days}
+            lang={lang}
             selectedDay={selectedDay}
             tr={tr}
             onSelect={onSelectDay}

@@ -329,6 +329,14 @@ h3 { margin: 0 0 6px; font-size: 17px; }
 /* === 7-колоночный календарь === */
 .cal-wrap { margin-bottom: 12px; }
 
+.cal-month {
+  margin: 0 0 8px;
+  color: #f7f3ff;
+  font-size: 17px;
+  font-weight: 800;
+  text-align: center;
+}
+
 .cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
