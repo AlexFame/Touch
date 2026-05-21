@@ -1,9 +1,9 @@
 import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
-import { join, extname } from "node:path";
+import { join, extname, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const DIST = join(fileURLToPath(import.meta.url), "..", "dist");
+const DIST = join(dirname(fileURLToPath(import.meta.url)), "dist");
 const PORT = process.env.PORT || 5173;
 
 const MIME = {
@@ -20,36 +20,40 @@ const MIME = {
 };
 
 async function serve(req, res) {
-  let urlPath = new URL(req.url, "http://x").pathname;
+  try {
+    const urlPath = new URL(req.url, "http://x").pathname;
 
-  // strip query string, decode percent-encoding
-  const candidates = [
-    join(DIST, urlPath),
-    join(DIST, urlPath, "index.html"),
-  ];
+    const candidates = [
+      join(DIST, urlPath),
+      join(DIST, urlPath, "index.html"),
+    ];
 
-  for (const filePath of candidates) {
-    try {
-      const s = await stat(filePath);
-      if (s.isFile()) {
-        const ext = extname(filePath).toLowerCase();
-        const body = await readFile(filePath);
-        res.writeHead(200, {
-          "Content-Type": MIME[ext] || "application/octet-stream",
-          "Cache-Control": ext === ".html" ? "no-cache" : "max-age=31536000,immutable",
-        });
-        res.end(body);
-        return;
-      }
-    } catch {}
+    for (const filePath of candidates) {
+      try {
+        const s = await stat(filePath);
+        if (s.isFile()) {
+          const ext = extname(filePath).toLowerCase();
+          const body = await readFile(filePath);
+          res.writeHead(200, {
+            "Content-Type": MIME[ext] || "application/octet-stream",
+            "Cache-Control": ext === ".html" ? "no-cache" : "max-age=31536000,immutable",
+          });
+          res.end(body);
+          return;
+        }
+      } catch {}
+    }
+
+    // SPA fallback
+    const index = await readFile(join(DIST, "index.html"));
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
+    res.end(index);
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "text/plain" });
+    res.end("Server error: " + err.message);
   }
-
-  // SPA fallback
-  const index = await readFile(join(DIST, "index.html"));
-  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-cache" });
-  res.end(index);
 }
 
 createServer(serve).listen(PORT, () => {
-  console.log(`miniapp served on :${PORT}`);
+  console.log(`miniapp served from ${DIST} on :${PORT}`);
 });
