@@ -70,6 +70,8 @@ body::-webkit-scrollbar { display: none; width: 0; }
 /* main — контейнер-экран, занимает весь WebView */
 main {
   position: relative;
+  isolation: isolate;
+  contain: paint;
   width: 100%;
   /* 100dvh правильнее учитывает размер WebView в Telegram */
   height: 100vh; /* fallback */
@@ -92,6 +94,8 @@ main::-webkit-scrollbar { display: none; width: 0; }
 
 /* Каждый экран (section) скроллится внутри main */
 main > section {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: calc(100vh - 32px); /* fallback */
   height: calc(100dvh - 32px);
@@ -159,7 +163,7 @@ main > section::-webkit-scrollbar { display: none; width: 0; }
    КОМПОНЕНТЫ
    ===================================================== */
 
-.bg-orb { position: fixed; border-radius: 999px; filter: blur(50px); opacity: .35; pointer-events: none; }
+.bg-orb { position: absolute; z-index: 0; border-radius: 999px; filter: blur(50px); opacity: .35; pointer-events: none; }
 .bg-orb.one { width: 220px; height: 220px; background: #7d5ac9; right: -60px; top: -50px; }
 .bg-orb.two { width: 180px; height: 180px; background: #5d8065; left: -80px; bottom: 80px; }
 
