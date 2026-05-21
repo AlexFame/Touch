@@ -1,99 +1,99 @@
-# Deploying to Railway
+# Railway Deployment
 
-This project is configured to run on Railway as three separate services:
-1. **Backend API** (FastAPI)
-2. **Bot Worker** (Telegram bot using aiogram)
-3. **Mini App** (React frontend)
+Do not deploy this repository root as one service. It is a monorepo:
 
-## Prerequisites
+- `backend/` + `app/` are Python backend/bot code and run from the repository root.
+- `miniapp/` is the Vite/React Telegram Mini App and runs from `/miniapp`.
 
-- A Railway account (https://railway.app)
-- A GitHub repository containing this codebase
-- Your Telegram Bot Token (`BOT_TOKEN`)
-- Google Calendar Service Account credentials
+Use a Railway PostgreSQL database and separate services.
 
-## Step 1: Create a PostgreSQL Database
+## Current working Railway deployment
 
-1. In your Railway project, click **New** -> **Database** -> **Add PostgreSQL**.
-2. Railway will provision a database and provide a `DATABASE_URL` environment variable.
-3. This single database will be shared between the API and the Bot worker. The schema will be created automatically upon the first startup.
+- Backend API: https://observant-adaptation-production-918f.up.railway.app
+- Mini App: https://unique-blessing-production.up.railway.app
+- Status: Backend API, Mini App, and Postgres are online.
 
-## Step 2: Deploy the Backend API
+## 1. PostgreSQL
 
-1. Click **New** -> **GitHub Repo** and select your repository.
-2. Go to the new service settings and rename it to `backend-api`.
-3. Under **Variables**, link the `DATABASE_URL` from the PostgreSQL service.
-4. Add the following environment variables:
-   - `BOT_TOKEN`: Your Telegram bot token
-   - `GOOGLE_SERVICE_ACCOUNT_JSON`: The raw JSON content of your `service_account.json` file.
-   - Any other required variables from your `.env` file (e.g. `ADMIN_IDS`, `BUSINESS_TZ`, `CALENDAR_ENABLED`).
-5. Under **Settings** -> **Build**, ensure it uses the Python Nixpacks builder.
-6. Under **Settings** -> **Deploy**, set the Start Command to:
-   ```bash
-   uvicorn backend.main:app --host 0.0.0.0 --port $PORT
-   ```
-7. Click **Generate Domain** to get a public URL for your API.
+Create a Railway PostgreSQL database first. Use its `DATABASE_URL` in the
+Backend API and Bot Worker services.
 
-## Step 3: Deploy the Bot Worker
+## 2. Backend API Service
 
-1. Click **New** -> **GitHub Repo** and select your repository again.
-2. Rename this service to `bot-worker`.
-3. Under **Variables**, add all the exact same environment variables as the backend API (`DATABASE_URL`, `BOT_TOKEN`, `GOOGLE_SERVICE_ACCOUNT_JSON`, etc.).
-   *Crucial: Also add `WEBAPP_URL` and set it to the public domain of the Mini App (which you will set up in Step 4).*
-4. Under **Settings** -> **Deploy**, set the Start Command to:
-   ```bash
-   python -m app.main
-   ```
-5. Do *not* generate a domain for this service, as it runs via long-polling in the background.
+- Root Directory: `/`
+- Build Command: leave empty, or use Railway/Nixpacks default
+- Start Command:
 
-## Step 4: Deploy the Mini App (Frontend)
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
 
-1. Click **New** -> **GitHub Repo** and select your repository.
-2. Rename this service to `miniapp-frontend`.
-3. Under **Settings** -> **Build**, change the Root Directory to `/miniapp`.
-4. The Build Command should be:
-   ```bash
-   npm run build
-   ```
-5. Set the Start Command to a static server, for example:
-   ```bash
-   npx serve -s dist -p $PORT
-   ```
-6. Click **Generate Domain** to get a public URL for your Mini App.
-7. Important: Update the `bot-worker` environment variables to set `WEBAPP_URL` to this newly generated domain. Also, ensure the API URL in the frontend points to your `backend-api` domain if it is not relative.
+Variables:
+
+```env
+BOT_TOKEN=...
+ADMIN_IDS=349353007
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+WEBAPP_URL=https://your-miniapp-domain.up.railway.app
+BUSINESS_TZ=Europe/Berlin
+BUSINESS_START_HOUR=10
+BUSINESS_END_HOUR=20
+SLOT_STEP_MINUTES=30
+BUFFER_MINUTES=15
+BOOKING_DAYS_AHEAD=30
+CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=...
+GOOGLE_SERVICE_ACCOUNT_JSON={...}
+GOOGLE_REVIEW_URL=...
+```
+
+Generate a public Railway domain for this service. The Mini App uses this URL
+as `VITE_API_URL`.
+
+## 3. Bot Worker Service
+
+- Root Directory: `/`
+- Build Command: leave empty, or use Railway/Nixpacks default
+- Start Command:
+
+```bash
+python -m app.main
+```
+
+Variables: same as Backend API, including the same `DATABASE_URL` and
+`WEBAPP_URL`.
+
+Do not generate a domain for this service. It uses Telegram long polling.
+
+## 4. Mini App Frontend Service
+
+- Root Directory: `/miniapp`
+- Build Command:
+
+```bash
+npm run build
+```
+
+- Start Command:
+
+```bash
+npm run preview
+```
+
+Variables:
+
+```env
+VITE_API_URL=https://your-backend-api-domain.up.railway.app
+```
+
+Generate a public Railway domain for this service. Then copy that Mini App URL
+into `WEBAPP_URL` for both Python services and restart/redeploy them.
 
 ## Notes
-- **Local Development**: If you run the project locally without `DATABASE_URL` set, the app will automatically fall back to using SQLite (`massage_bot.sqlite3`) and the local `service_account.json` file.
-- **Database Schema**: The schema for PostgreSQL is built independently and natively using `SERIAL` and proper `TIMESTAMP` data types, ensuring optimal performance.
 
----
-
-## Local Development (all services at once)
-
-Use [honcho](https://honcho.readthedocs.io/) to start all three services with a single command.
-
-### Setup
-
-```bash
-# Install Python dependencies (including honcho)
-pip install -r requirements.txt
-
-# Install frontend dependencies
-cd miniapp && npm install && cd ..
-
-# Copy and fill in your environment variables
-cp .env.example .env   # or create .env manually
-```
-
-### Run
-
-```bash
-honcho start -f Procfile.dev
-```
-
-This starts:
-- `backend` — FastAPI on http://localhost:8000 (hot-reload enabled)
-- `bot` — Telegram bot worker (long-polling)
-- `miniapp` — Vite dev server on http://localhost:5173
-
-Press `Ctrl+C` to stop all processes at once.
+- `GOOGLE_SERVICE_ACCOUNT_JSON` should be the raw JSON content from Google
+  Cloud. Do not commit `service_account.json`.
+- For local development without `DATABASE_URL`, the app uses SQLite.
+- Optional config examples are included as `railway.backend.json`,
+  `railway.bot.json`, and `miniapp/railway.json`, but Railway UI settings above
+  are the source of truth.
