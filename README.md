@@ -88,3 +88,87 @@ ngrok http 5173
 ```
 
 Put the generated HTTPS URL into `WEBAPP_URL` and restart the bot.
+
+## Railway Deployment Settings
+
+Do not deploy the repository root as one Railway service. This repository is a
+monorepo with separate Python services and a separate Mini App frontend.
+
+Recommended Railway services:
+
+### Service 1: Backend API
+
+- Service type: GitHub repo service
+- Root Directory: `/`
+- Build Command: leave empty, or use Railway/Nixpacks default
+- Start Command:
+
+```bash
+uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+```
+
+Required variables:
+
+```env
+BOT_TOKEN=...
+ADMIN_IDS=349353007
+DATABASE_URL=${{Postgres.DATABASE_URL}}
+WEBAPP_URL=https://your-miniapp-domain.up.railway.app
+BUSINESS_TZ=Europe/Berlin
+BUSINESS_START_HOUR=10
+BUSINESS_END_HOUR=20
+SLOT_STEP_MINUTES=30
+BUFFER_MINUTES=15
+BOOKING_DAYS_AHEAD=30
+CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=...
+GOOGLE_SERVICE_ACCOUNT_JSON={...}
+GOOGLE_REVIEW_URL=...
+```
+
+`GOOGLE_SERVICE_ACCOUNT_JSON` must be the raw JSON content from Google Cloud.
+Do not commit `service_account.json` to the repository.
+
+### Service 2: Bot Worker
+
+The Telegram bot is a worker process and should be a separate Railway service
+from the API, using the same repository root.
+
+- Service type: GitHub repo service
+- Root Directory: `/`
+- Build Command: leave empty, or use Railway/Nixpacks default
+- Start Command:
+
+```bash
+python -m app.main
+```
+
+Variables: use the same variables as Backend API, including the same
+`DATABASE_URL` and `WEBAPP_URL`.
+
+Do not generate a public domain for the bot worker.
+
+### Service 3: Mini App Frontend
+
+- Service type: GitHub repo service
+- Root Directory: `/miniapp`
+- Build Command:
+
+```bash
+npm run build
+```
+
+- Start Command:
+
+```bash
+npm run preview
+```
+
+Required variables:
+
+```env
+VITE_API_URL=https://your-backend-api-domain.up.railway.app
+```
+
+After Railway generates the Mini App domain, copy it into `WEBAPP_URL` on both
+the Backend API and Bot Worker services, then redeploy/restart those services.

@@ -1,4 +1,5 @@
 .env
+.DS_Store
 service_account.json
 *.sqlite3
 __pycache__/
