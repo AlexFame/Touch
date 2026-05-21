@@ -393,7 +393,6 @@ h3 { margin: 0 0 6px; font-size: 17px; }
   gap: 8px;
   flex-shrink: 0;
   padding-top: 8px;
-  padding-bottom: min(var(--keyboard-inset), 260px);
   border-top: 1px solid var(--line);
   background: transparent;
 }

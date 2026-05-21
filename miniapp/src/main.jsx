@@ -383,9 +383,12 @@ function App() {
         baseHeight = Math.max(baseHeight, window.innerHeight, visibleHeight);
       }
 
-      root.style.setProperty("--app-height", `${baseHeight}px`);
+      const keyboardOpen = keyboardInset >= 80;
+      const appHeight = keyboardOpen ? visibleHeight + offsetTop : baseHeight;
+
+      root.style.setProperty("--app-height", `${appHeight}px`);
       root.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
-      root.classList.toggle("keyboard-open", keyboardInset >= 80);
+      root.classList.toggle("keyboard-open", keyboardOpen);
     };
 
     const onPointerDown = (event) => {
@@ -418,6 +421,7 @@ function App() {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("focusin", onFocusIn);
       root.classList.remove("keyboard-open");
+      root.style.removeProperty("--app-height");
       root.style.removeProperty("--keyboard-inset");
     };
   }, []);
