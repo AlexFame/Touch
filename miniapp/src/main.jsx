@@ -160,6 +160,18 @@ if (tg) {
   tg.expand();
 }
 
+function isTextInput(element) {
+  return (
+    element instanceof HTMLInputElement ||
+    element instanceof HTMLTextAreaElement
+  );
+}
+
+function blurActiveInput() {
+  const active = document.activeElement;
+  if (isTextInput(active)) active.blur();
+}
+
 function api(path, options = {}) {
   const fallbackError = UI_TEXT[getInitialLang(tg)].requestFailed;
   const headers = {
@@ -353,6 +365,64 @@ function App() {
   }, [backendLang, tr]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const root = document.documentElement;
+    let baseHeight = window.innerHeight;
+
+    const updateViewport = () => {
+      const viewport = window.visualViewport;
+      const visibleHeight = viewport?.height || window.innerHeight;
+      const offsetTop = viewport?.offsetTop || 0;
+      const keyboardInset = Math.max(
+        0,
+        baseHeight - visibleHeight - offsetTop,
+      );
+
+      if (keyboardInset < 80) {
+        baseHeight = Math.max(baseHeight, window.innerHeight, visibleHeight);
+      }
+
+      root.style.setProperty("--app-height", `${baseHeight}px`);
+      root.style.setProperty("--keyboard-inset", `${keyboardInset}px`);
+      root.classList.toggle("keyboard-open", keyboardInset >= 80);
+    };
+
+    const onPointerDown = (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      if (target.closest("input, textarea, select")) return;
+      blurActiveInput();
+    };
+
+    const onFocusIn = (event) => {
+      if (!isTextInput(event.target)) return;
+      window.setTimeout(() => {
+        event.target
+          .closest(".field")
+          ?.scrollIntoView({ block: "center", behavior: "smooth" });
+      }, 80);
+    };
+
+    updateViewport();
+    window.visualViewport?.addEventListener("resize", updateViewport);
+    window.visualViewport?.addEventListener("scroll", updateViewport);
+    window.addEventListener("resize", updateViewport);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("focusin", onFocusIn);
+
+    return () => {
+      window.visualViewport?.removeEventListener("resize", updateViewport);
+      window.visualViewport?.removeEventListener("scroll", updateViewport);
+      window.removeEventListener("resize", updateViewport);
+      document.removeEventListener("pointerdown", onPointerDown, true);
+      document.removeEventListener("focusin", onFocusIn);
+      root.classList.remove("keyboard-open");
+      root.style.removeProperty("--keyboard-inset");
+    };
+  }, []);
+
+  useEffect(() => {
     if (!selectedService || !selectedDay) return;
     let cancelled = false;
     setSlotsLoading(true);
@@ -424,6 +494,7 @@ function App() {
   }
 
   async function submitBooking() {
+    blurActiveInput();
     setError("");
     const cleanName = normalizeName(name);
     const cleanContact = normalizeContact(contact);

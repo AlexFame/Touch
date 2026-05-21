@@ -9,6 +9,8 @@
   --purple: #9a72df;
   --purple-2: #c8b5ff;
   --green: #b9d9bd;
+  --app-height: 100dvh;
+  --keyboard-inset: 0px;
 }
 * { box-sizing: border-box; }
 button, input { font: inherit; }
@@ -72,6 +74,7 @@ main {
   /* 100dvh правильнее учитывает размер WebView в Telegram */
   height: 100vh; /* fallback */
   height: 100dvh;
+  height: var(--app-height);
   min-height: 100dvh;
   margin: 0;
   padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
@@ -92,6 +95,7 @@ main > section {
   width: 100%;
   height: calc(100vh - 32px); /* fallback */
   height: calc(100dvh - 32px);
+  height: calc(var(--app-height) - 32px);
   max-width: 560px;
   margin: 0 auto;
   overflow-y: auto;
@@ -106,6 +110,7 @@ main > section::-webkit-scrollbar { display: none; width: 0; }
 .hero {
   height: calc(100vh - 32px);
   height: calc(100dvh - 32px);
+  height: calc(var(--app-height) - 32px);
   min-height: calc(100dvh - 32px);
   width: 100%;
   max-width: 560px;
@@ -197,7 +202,7 @@ h3 { margin: 0 0 6px; font-size: 17px; }
 .slot { height: 52px; border-radius: 18px; background: var(--card); border: 1px solid var(--line); color: white; font-weight: 800; }
 .field { display: grid; gap: 8px; color: var(--muted); margin: 12px 0; font-weight: 700; }
 .field input { width: 100%; height: 54px; border-radius: 18px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: white; padding: 0 14px; outline: none; }
-.field input:focus { border-color: var(--purple-2); }
+.field input:focus { border-color: var(--purple-2); scroll-margin-bottom: calc(var(--keyboard-inset) + 96px); }
 .cat-strip { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; padding: 10px 12px; border-radius: 22px; background: rgba(255,255,255,.06); border: 1px solid var(--line); color: var(--purple-2); font-weight: 800; }
 .cat-strip .cat { transform: scale(.45); width: 86px; height: 70px; margin: -24px -20px; }
 .done { text-align: center; padding-top: 28px; }
@@ -241,11 +246,13 @@ h3 { margin: 0 0 6px; font-size: 17px; }
   main > section {
     height: calc(100vh - 28px);
     height: calc(100dvh - 28px);
+    height: calc(var(--app-height) - 28px);
   }
 
   .hero {
     height: calc(100vh - 28px);
     height: calc(100dvh - 28px);
+    height: calc(var(--app-height) - 28px);
     min-height: calc(100dvh - 28px);
     justify-content: center;
   }
@@ -386,6 +393,7 @@ h3 { margin: 0 0 6px; font-size: 17px; }
   gap: 8px;
   flex-shrink: 0;
   padding-top: 8px;
+  padding-bottom: min(var(--keyboard-inset), 260px);
   border-top: 1px solid var(--line);
   background: transparent;
 }
