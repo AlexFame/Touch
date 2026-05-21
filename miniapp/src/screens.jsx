@@ -93,6 +93,13 @@ export function MyBookingsScreen({
             >
               {tr.book}
             </button>
+            <button
+              className="secondary"
+              onClick={onBack}
+              style={{ marginTop: "0.75rem" }}
+            >
+              {tr.home}
+            </button>
           </div>
         </>
       ) : (
