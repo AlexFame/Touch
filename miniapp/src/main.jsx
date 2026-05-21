@@ -22,6 +22,7 @@ const initData = tg?.initData || "";
 const IMAGE_SOURCES = {
   hello: "/Привет 2.png",
   myBookings: "/Мои Записи 2.png",
+  noBookings: "/Нет Записи.png",
   sleep: "/cat-sleep.png",
   services: "/к Услугам.png",
   date: "/Дата.png",
@@ -461,7 +462,7 @@ function App() {
   async function loadMyBookings() {
     setError("");
     preloadImage(IMAGE_SOURCES.myBookings);
-    preloadImage(IMAGE_SOURCES.sleep);
+    preloadImage(IMAGE_SOURCES.noBookings);
     try {
       const result = await api(`/api/active-bookings?lang=${backendLang}`);
       setActiveBookings(result || []);
@@ -677,7 +678,7 @@ function App() {
               onMyBookings={async () => {
                 setError("");
                 preloadImage(IMAGE_SOURCES.myBookings);
-                preloadImage(IMAGE_SOURCES.sleep);
+                preloadImage(IMAGE_SOURCES.noBookings);
                 try {
                   const updated = await api(`/api/active-bookings?lang=${backendLang}`);
                   setActiveBookings(updated || []);

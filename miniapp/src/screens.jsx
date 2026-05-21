@@ -73,34 +73,37 @@ export function MyBookingsScreen({
   return (
     <>
       <TopBar title={tr.myBookings} onBack={onBack} />
-      <StableImage
-        src={imageSources.myBookings}
-        className="services-hero-img"
-        width={320}
-        height={220}
-      />
       {activeBookings.length === 0 ? (
-        <div
-          className="empty"
-          style={{ textAlign: "center", marginTop: "2rem" }}
-        >
+        <>
           <StableImage
-            src={imageSources.sleep}
-            className="cat-img-md"
-            width={160}
-            height={160}
+            src={imageSources.noBookings}
+            className="services-hero-img"
+            width={320}
+            height={220}
           />
-          <h3>{tr.noActiveBookings}</h3>
-          <button
-            className="primary"
-            onClick={onBook}
-            style={{ marginTop: "1.5rem" }}
+          <div
+            className="empty"
+            style={{ textAlign: "center", marginTop: "2rem" }}
           >
-            {tr.book}
-          </button>
-        </div>
+            <h3>{tr.noActiveBookings}</h3>
+            <button
+              className="primary"
+              onClick={onBook}
+              style={{ marginTop: "1.5rem" }}
+            >
+              {tr.book}
+            </button>
+          </div>
+        </>
       ) : (
-        <div style={{ marginTop: "1rem" }}>
+        <>
+          <StableImage
+            src={imageSources.myBookings}
+            className="services-hero-img"
+            width={320}
+            height={220}
+          />
+          <div style={{ marginTop: "1rem" }}>
           {activeBookings.map((ab) => (
             <div
               key={ab.id}
@@ -142,7 +145,8 @@ export function MyBookingsScreen({
               </div>
             </div>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </>
   );
