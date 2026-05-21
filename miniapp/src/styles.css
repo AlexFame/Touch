@@ -397,6 +397,10 @@ h3 { margin: 0 0 6px; font-size: 17px; }
   background: transparent;
 }
 
+.keyboard-open .section-footer {
+  border-top-color: transparent;
+}
+
 .section-footer > .primary,
 .section-footer > .secondary {
   margin-top: 0;
