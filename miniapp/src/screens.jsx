@@ -89,7 +89,7 @@ export function MyBookingsScreen({
             <button
               className="primary"
               onClick={onBook}
-              style={{ marginTop: "1.5rem" }}
+              style={{ marginTop: "2.25rem" }}
             >
               {tr.book}
             </button>
