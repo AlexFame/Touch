@@ -22,7 +22,7 @@ const initData = tg?.initData || "";
 const IMAGE_SOURCES = {
   hello: "/Привет 2.png",
   myBookings: "/Мои Записи 2.png",
-  noBookings: "/Нет Записи.png",
+  noBookings: "/no-bookings-cat.png",
   sleep: "/cat-sleep.png",
   services: "/к Услугам.png",
   date: "/Дата.png",
