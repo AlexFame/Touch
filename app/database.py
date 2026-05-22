@@ -977,8 +977,8 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at::timestamptz >= $1::timestamptz
-                ORDER BY a.starts_at::timestamptz
+                AND a.starts_at >= $1
+                ORDER BY a.starts_at
                 LIMIT $2
                 """,
                 from_iso,
@@ -995,8 +995,8 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND datetime(a.starts_at) >= datetime(?)
-                ORDER BY datetime(a.starts_at)
+                AND a.starts_at >= ?
+                ORDER BY a.starts_at
                 LIMIT ?
                 """,
                 (from_iso, limit),
