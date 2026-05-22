@@ -70,8 +70,6 @@ body::-webkit-scrollbar { display: none; width: 0; }
 /* main — контейнер-экран, занимает весь WebView */
 main {
   position: relative;
-  isolation: isolate;
-  contain: paint;
   width: 100%;
   /* 100dvh правильнее учитывает размер WebView в Telegram */
   height: 100vh; /* fallback */
@@ -79,6 +77,20 @@ main {
   height: var(--app-height);
   min-height: 100dvh;
   margin: 0;
+  overflow: hidden;
+  background: #0e1117;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+main::-webkit-scrollbar { display: none; width: 0; }
+
+.app-swipe-layer {
+  position: relative;
+  isolation: isolate;
+  contain: paint;
+  width: 100%;
+  height: 100%;
   padding: env(safe-area-inset-top, 16px) env(safe-area-inset-right, 16px) env(safe-area-inset-bottom, 16px) env(safe-area-inset-left, 16px);
   padding: 16px;
   overflow: hidden;
@@ -90,10 +102,10 @@ main {
   -ms-overflow-style: none;
 }
 
-main::-webkit-scrollbar { display: none; width: 0; }
+.app-swipe-layer::-webkit-scrollbar { display: none; width: 0; }
 
 /* Каждый экран (section) скроллится внутри main */
-main > section {
+.app-swipe-layer > section {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -108,7 +120,7 @@ main > section {
   -ms-overflow-style: none;
 }
 
-main > section::-webkit-scrollbar { display: none; width: 0; }
+.app-swipe-layer > section::-webkit-scrollbar { display: none; width: 0; }
 
 /* Главный экран */
 .hero {
@@ -245,9 +257,9 @@ h3 { margin: 0 0 6px; font-size: 17px; }
    АДАПТИВ ДЛЯ МОБИЛЬНОГО WEBVIEW
    ===================================================== */
 @media (max-width: 480px) {
-  main { padding: 14px; }
+  .app-swipe-layer { padding: 14px; }
 
-  main > section {
+  .app-swipe-layer > section {
     height: calc(100vh - 28px);
     height: calc(100dvh - 28px);
     height: calc(var(--app-height) - 28px);

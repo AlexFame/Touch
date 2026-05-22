@@ -3,9 +3,11 @@ import { memo } from "react";
 export function Shell({ children }) {
   return (
     <main>
-      <div className="bg-orb one" />
-      <div className="bg-orb two" />
-      {children}
+      <div className="app-swipe-layer">
+        <div className="bg-orb one" />
+        <div className="bg-orb two" />
+        {children}
+      </div>
     </main>
   );
 }
