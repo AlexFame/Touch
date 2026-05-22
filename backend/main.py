@@ -20,7 +20,7 @@ from app.database import (
     init_db, init_pool,
     db_ensure_client, db_update_client_profile,
     db_get_services, db_get_service,
-    db_create_appointment, db_create_booking_atomic,
+    db_create_booking_atomic, db_reschedule_atomic,
     db_update_appointment_google_event_id, db_update_appointment_status,
     db_get_active_bookings, db_get_client_appointment, db_get_appointment_admin_summary_data,
     db_get_google_event_id,
@@ -432,17 +432,13 @@ async def reschedule_booking_endpoint(
     if payload.slot not in available_slots:
         raise HTTPException(status_code=409, detail="Slot is no longer available")
 
-    if old_row["google_event_id"]:
-        calendar.delete_event(old_row["google_event_id"])
-    await db_update_appointment_status(appointment_id, "rescheduled")
-
     start = parse_local_datetime(payload.day_iso, payload.slot, settings)
     end = start + timedelta(minutes=duration + settings.buffer_minutes)
     client_title = service_title(service, payload.lang)
     admin_title = service_title(service, "ru")
-    
+
     final_contact = client["contact"] if "contact" in client.keys() and client["contact"] else client["phone"]
-    
+
     summary_text = (
         f"Услуга: {admin_title}\n"
         f"Дата: {start.strftime('%d.%m.%Y')}\n"
@@ -464,29 +460,59 @@ async def reschedule_booking_endpoint(
             admin_contact = f"Контакт: не указан\nTelegram: <a href=\"tg://user?id={telegram_id}\">открыть профиль</a>"
 
     admin_summary = summary_text + f"\n{admin_contact}"
-    
+
     calendar_description = (
-        summary_text + 
+        summary_text +
         f"\nКонтакт: {final_contact or 'не указан'}" +
         f"\nTelegram ID: {telegram_id}" +
         (f"\nUsername: @{username}" if username else "")
     )
-    
+
     if first_bonus:
         admin_summary += "\nБонус первого визита: +15 минут"
         calendar_description += "\nБонус первого визита: +15 минут"
 
-    new_appointment_id = await db_create_appointment(client["id"], service["id"], start.isoformat(), end.isoformat(), duration, service["price_eur"], "telegram_miniapp", int(first_bonus))
-
-    google_event_id = calendar.create_event(
-        summary=f"Massage - {client['name']} - {admin_title.split(' - ')[0]}",
-        description=calendar_description + f"\n\nAppointment ID: {new_appointment_id}\nBuffer: {settings.buffer_minutes} min",
-        start=start,
-        end=end,
-        appointment_id=new_appointment_id,
+    # Atomically mark the old appointment as rescheduled and insert the new one.
+    # If either write fails the whole thing rolls back — no partial state where
+    # the old booking is cancelled but no new one exists.
+    new_appointment_id = await db_reschedule_atomic(
+        appointment_id,
+        client["id"],
+        service["id"],
+        start.isoformat(),
+        end.isoformat(),
+        duration,
+        service["price_eur"],
+        "telegram_miniapp",
+        int(first_bonus),
     )
-    if google_event_id:
-        await db_update_appointment_google_event_id(new_appointment_id, google_event_id)
+
+    # Delete the old Calendar event — non-critical, must not abort a successful reschedule.
+    try:
+        if old_row["google_event_id"]:
+            calendar.delete_event(old_row["google_event_id"])
+    except Exception as exc:
+        logger.warning(
+            "Reschedule %s→%s: failed to delete old Calendar event — %s",
+            appointment_id, new_appointment_id, exc,
+        )
+
+    # Create the new Calendar event — non-critical.
+    try:
+        google_event_id = calendar.create_event(
+            summary=f"Massage - {client['name']} - {admin_title.split(' - ')[0]}",
+            description=calendar_description + f"\n\nAppointment ID: {new_appointment_id}\nBuffer: {settings.buffer_minutes} min",
+            start=start,
+            end=end,
+            appointment_id=new_appointment_id,
+        )
+        if google_event_id:
+            await db_update_appointment_google_event_id(new_appointment_id, google_event_id)
+    except Exception as exc:
+        logger.warning(
+            "Reschedule %s→%s: Google Calendar sync failed — %s",
+            appointment_id, new_appointment_id, exc,
+        )
 
     client_text = (
         "✅ Запись перенесена\n\n"
@@ -495,14 +521,30 @@ async def reschedule_booking_endpoint(
         f"{duration} мин · {service['price_eur']}€\n\n"
         "За сутки до визита я напомню вам о сеансе 🐾"
     )
-    await bot.send_message(telegram_id, client_text)
-
     from app.handlers import get_appointment_admin_summary
     from app.i18n import t
     old_summary = await get_appointment_admin_summary(appointment_id)
     admin_text = t("ru", "admin_client_reschedule", summary=old_summary) + f"\n\nНовая запись:\n{admin_summary}"
-    for admin_id in settings.admin_ids:
-        await bot.send_message(admin_id, admin_text)
+
+    # Fire-and-forget: Telegram sends must not block or fail the HTTP response.
+    async def _send_notifications() -> None:
+        try:
+            await bot.send_message(telegram_id, client_text)
+        except Exception as exc:
+            logger.warning(
+                "Reschedule %s→%s: failed to notify client %s — %s",
+                appointment_id, new_appointment_id, telegram_id, exc,
+            )
+        for admin_id in settings.admin_ids:
+            try:
+                await bot.send_message(admin_id, admin_text)
+            except Exception as exc:
+                logger.warning(
+                    "Reschedule %s→%s: failed to notify admin %s — %s",
+                    appointment_id, new_appointment_id, admin_id, exc,
+                )
+
+    asyncio.create_task(_send_notifications())
 
     return {
         "status": "ok",

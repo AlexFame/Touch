@@ -376,6 +376,66 @@ async def db_create_booking_atomic(
                 await db.rollback()
                 raise
 
+async def db_reschedule_atomic(
+    old_appointment_id: int,
+    client_id: int,
+    service_id: str,
+    starts_at: str,
+    ends_at: str,
+    duration_minutes: int,
+    price_eur: int,
+    source: str,
+    first_visit_bonus_applied: int,
+) -> int:
+    """
+    Atomically mark the old appointment as 'rescheduled' and insert the new
+    appointment row — both in a single transaction.
+    Returns the new appointment id.  Rolls back everything on any failure,
+    so the DB never ends up with the old booking cancelled but no new one.
+    """
+    if DATABASE_URL:
+        async with _pg_pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE appointments SET status = 'rescheduled' WHERE id = $1",
+                    old_appointment_id,
+                )
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO appointments
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+                    """,
+                    client_id, service_id, starts_at, ends_at, duration_minutes,
+                    price_eur, source, first_visit_bonus_applied,
+                )
+                return row["id"]
+    else:
+        async with aiosqlite.connect(DB_PATH) as db:
+            try:
+                await db.execute(
+                    "UPDATE appointments SET status = 'rescheduled' WHERE id = ?",
+                    (old_appointment_id,),
+                )
+                cur = await db.execute(
+                    """
+                    INSERT INTO appointments
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied),
+                )
+                new_appointment_id = cur.lastrowid
+                await db.commit()
+                return new_appointment_id
+            except Exception:
+                await db.rollback()
+                raise
+
+
 async def db_update_appointment_google_event_id(appointment_id: int, google_event_id: str) -> None:
     if DATABASE_URL:
         async with _pg_pool.acquire() as conn:
