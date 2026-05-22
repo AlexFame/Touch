@@ -639,6 +639,11 @@ function App() {
     let locked = false;
     let cancelled = false;
     const getEl = () => document.querySelector("main > section");
+    const clearSwipeStyles = (el) => {
+      el.style.transition = "none";
+      el.style.transform = "";
+      el.style.boxShadow = "";
+    };
 
     const onTouchStart = (e) => {
       if (e.touches[0].clientX > 40) return;
@@ -673,7 +678,7 @@ function App() {
       dragging = false;
       const el = getEl();
       if (cancelled || !el) {
-        if (el) { el.style.transform = ""; el.style.transition = ""; el.style.boxShadow = ""; }
+        if (el) clearSwipeStyles(el);
         cancelled = false;
         return;
       }
@@ -683,10 +688,9 @@ function App() {
         el.style.transition = "transform 0.22s ease-out";
         el.style.transform = `translate3d(${window.innerWidth}px, 0, 0)`;
         setTimeout(() => {
+          clearSwipeStyles(el);
+          el.scrollTop = 0;
           goBack();
-          el.style.transform = "";
-          el.style.transition = "";
-          el.style.boxShadow = "";
         }, 220);
       } else {
         el.style.transition = "transform 0.3s ease-out";
