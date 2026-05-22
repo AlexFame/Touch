@@ -638,7 +638,7 @@ function App() {
     let dragging = false;
     let locked = false;
     let cancelled = false;
-    const getEl = () => document.querySelector("main > section");
+    const getEl = () => document.querySelector("main");
 
     const onTouchStart = (e) => {
       if (e.touches[0].clientX > 40) return;
