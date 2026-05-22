@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 import aiosqlite
 from pathlib import Path
 
@@ -968,6 +969,16 @@ async def db_get_booked_appointments_for_date(day_iso: str) -> list[DBRow]:
 
 async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) -> list[DBRow]:
     """Return upcoming booked appointments from a local ISO datetime string."""
+    from_dt = datetime.fromisoformat(from_iso)
+
+    def is_upcoming(row: DBRow) -> bool:
+        starts_at = datetime.fromisoformat(row["starts_at"])
+        if starts_at.tzinfo is None and from_dt.tzinfo is not None:
+            starts_at = starts_at.replace(tzinfo=from_dt.tzinfo)
+        elif starts_at.tzinfo is not None and from_dt.tzinfo is None:
+            starts_at = starts_at.replace(tzinfo=None)
+        return starts_at >= from_dt
+
     if DATABASE_URL:
         async with _pg_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -977,14 +988,11 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at >= $1
                 ORDER BY a.starts_at
-                LIMIT $2
                 """,
-                from_iso,
-                limit,
             )
-            return [DBRow(dict(r)) for r in rows]
+            upcoming = [row for row in (DBRow(dict(r)) for r in rows) if is_upcoming(row)]
+            return upcoming[:limit]
     else:
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
@@ -995,11 +1003,9 @@ async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) ->
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at >= ?
                 ORDER BY a.starts_at
-                LIMIT ?
-                """,
-                (from_iso, limit),
+                """
             )
             rows = await cur.fetchall()
-            return [DBRow(dict(r)) for r in rows]
+            upcoming = [row for row in (DBRow(dict(r)) for r in rows) if is_upcoming(row)]
+            return upcoming[:limit]
