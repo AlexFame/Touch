@@ -684,14 +684,10 @@ function App() {
       const dx = e.changedTouches[0].clientX - startX;
       if (dx > 90) {
         tg?.HapticFeedback?.impactOccurred("light");
-        el.style.transition = "transform 0.22s ease-out";
-        el.style.transform = `translate3d(${window.innerWidth}px, 0, 0)`;
-        setTimeout(() => {
-          goBack();
-          el.style.transform = "";
-          el.style.transition = "";
-          el.style.boxShadow = "";
-        }, 220);
+        el.style.transform = "";
+        el.style.transition = "";
+        el.style.boxShadow = "";
+        goBack();
       } else {
         el.style.transition = "transform 0.3s ease-out";
         el.style.transform = "";
