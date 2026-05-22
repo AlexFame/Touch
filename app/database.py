@@ -300,6 +300,82 @@ async def db_create_appointment(client_id: int, service_id: str, starts_at: str,
             await db.commit()
             return cur.lastrowid
 
+
+async def db_create_booking_atomic(
+    client_id: int,
+    service_id: str,
+    starts_at: str,
+    ends_at: str,
+    duration_minutes: int,
+    price_eur: int,
+    source: str,
+    first_visit_bonus_applied: int,
+    *,
+    package_sessions: int | None = None,
+    package_expires_at: str | None = None,
+) -> int:
+    """
+    Atomically insert the appointment row, optionally create the package row,
+    and mark the first-visit bonus as used — all inside a single transaction.
+    Returns the new appointment id.  Rolls back everything on any failure.
+    """
+    if DATABASE_URL:
+        async with _pg_pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    """
+                    INSERT INTO appointments
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+                    """,
+                    client_id, service_id, starts_at, ends_at, duration_minutes,
+                    price_eur, source, first_visit_bonus_applied,
+                )
+                appointment_id = row["id"]
+                if package_sessions is not None and package_expires_at is not None:
+                    await conn.execute(
+                        "INSERT INTO packages (client_id, sessions_total, package_paid, expires_at)"
+                        " VALUES ($1, $2, 0, $3)",
+                        client_id, package_sessions, package_expires_at,
+                    )
+                if first_visit_bonus_applied:
+                    await conn.execute(
+                        "UPDATE clients SET first_visit_bonus_used = 1 WHERE id = $1",
+                        client_id,
+                    )
+                return appointment_id
+    else:
+        async with aiosqlite.connect(DB_PATH) as db:
+            try:
+                cur = await db.execute(
+                    """
+                    INSERT INTO appointments
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (client_id, service_id, starts_at, ends_at, duration_minutes,
+                     price_eur, source, first_visit_bonus_applied),
+                )
+                appointment_id = cur.lastrowid
+                if package_sessions is not None and package_expires_at is not None:
+                    await db.execute(
+                        "INSERT INTO packages (client_id, sessions_total, package_paid, expires_at)"
+                        " VALUES (?, ?, 0, ?)",
+                        (client_id, package_sessions, package_expires_at),
+                    )
+                if first_visit_bonus_applied:
+                    await db.execute(
+                        "UPDATE clients SET first_visit_bonus_used = 1 WHERE id = ?",
+                        (client_id,),
+                    )
+                await db.commit()
+                return appointment_id
+            except Exception:
+                await db.rollback()
+                raise
+
 async def db_update_appointment_google_event_id(appointment_id: int, google_event_id: str) -> None:
     if DATABASE_URL:
         async with _pg_pool.acquire() as conn:

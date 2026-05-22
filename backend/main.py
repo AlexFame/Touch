@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import hmac
 import json
@@ -19,7 +20,8 @@ from app.database import (
     init_db, init_pool,
     db_ensure_client, db_update_client_profile,
     db_get_services, db_get_service,
-    db_create_appointment, db_create_package, db_update_appointment_google_event_id, db_update_appointment_status,
+    db_create_appointment, db_create_booking_atomic,
+    db_update_appointment_google_event_id, db_update_appointment_status,
     db_get_active_bookings, db_get_client_appointment, db_get_appointment_admin_summary_data,
     db_get_google_event_id,
 )
@@ -261,7 +263,11 @@ async def create_booking(
         admin_summary += "\nБонус первого визита: +15 минут"
         calendar_description += "\nБонус первого визита: +15 минут"
 
-    appointment_id = await db_create_appointment(
+    # All booking-related DB writes in a single transaction: appointment row,
+    # optional package row, and first-visit bonus flag.  If any step fails the
+    # whole thing rolls back and the client gets a clean 500.
+    package_expires = (start.date() + timedelta(days=90)).isoformat() if service["is_package"] else None
+    appointment_id = await db_create_booking_atomic(
         client["id"],
         service["id"],
         start.isoformat(),
@@ -270,8 +276,12 @@ async def create_booking(
         service["price_eur"],
         "telegram_miniapp",
         int(first_bonus),
+        package_sessions=service["package_sessions"] if service["is_package"] else None,
+        package_expires_at=package_expires,
     )
 
+    # Google Calendar is non-critical: a failure here only means no calendar
+    # event, the booking itself is already safely committed.
     google_event_id = calendar.create_event(
         summary=f"Massage - {clean_name} - {admin_title.split(' - ')[0]}",
         description=calendar_description + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
@@ -282,10 +292,6 @@ async def create_booking(
     if google_event_id:
         await db_update_appointment_google_event_id(appointment_id, google_event_id)
 
-    if service["is_package"]:
-        expires = (start.date() + timedelta(days=90)).isoformat()
-        await db_create_package(client["id"], service["package_sessions"], expires)
-
     client_text = (
         "✅ Запись подтверждена\n\n"
         f"{client_title}\n"
@@ -293,11 +299,27 @@ async def create_booking(
         f"{duration} мин · {service['price_eur']}€\n\n"
         "За сутки до визита я напомню вам о сеансе 🐾"
     )
-    await bot.send_message(telegram_id, client_text)
-
     admin_text = "Новая запись через Mini App:\n\n" + admin_summary
-    for admin_id in settings.admin_ids:
-        await bot.send_message(admin_id, admin_text)
+
+    # Fire-and-forget: Telegram sends must not block or fail the HTTP response.
+    async def _send_notifications() -> None:
+        try:
+            await bot.send_message(telegram_id, client_text)
+        except Exception as exc:
+            logger.warning(
+                "Booking %s: failed to notify client %s — %s",
+                appointment_id, telegram_id, exc,
+            )
+        for admin_id in settings.admin_ids:
+            try:
+                await bot.send_message(admin_id, admin_text)
+            except Exception as exc:
+                logger.warning(
+                    "Booking %s: failed to notify admin %s — %s",
+                    appointment_id, admin_id, exc,
+                )
+
+    asyncio.create_task(_send_notifications())
 
     return {
         "appointment_id": appointment_id,
