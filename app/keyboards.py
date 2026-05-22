@@ -100,10 +100,11 @@ def admin_appointment_kb(appointment_id: int) -> InlineKeyboardMarkup:
 
 
 
-def reminder_kb(appointment_id: int, lang: str) -> InlineKeyboardMarkup:
+def reminder_kb(appointment_id: int, lang: str, webapp_url: str = "") -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text=t(lang, "reminder_ok"), callback_data=f"client:ok:{appointment_id}")
-    kb.button(text=t(lang, "reminder_reschedule"), callback_data=f"client:reschedule:{appointment_id}")
+    if webapp_url:
+        kb.button(text=t(lang, "reminder_reschedule"), web_app=WebAppInfo(url=webapp_url))
     kb.button(text=t(lang, "reminder_cancel"), callback_data=f"client:cancel:{appointment_id}")
     kb.adjust(1)
     return kb.as_markup()

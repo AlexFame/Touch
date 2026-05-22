@@ -226,7 +226,10 @@ async def my_booking_handler(call: CallbackQuery, settings: Settings) -> None:
             bonus=bool(row["first_visit_bonus_applied"]),
         )
         
-        await call.message.answer(t(lang, "my_booking_text", summary=summary), reply_markup=reminder_kb(row["id"], lang))
+        await call.message.answer(
+            t(lang, "my_booking_text", summary=summary),
+            reply_markup=reminder_kb(row["id"], lang, settings.webapp_url),
+        )
 
     from app.keyboards import main_menu_webapp_kb
     await call.message.answer(t(lang, "main_menu"), reply_markup=main_menu_webapp_kb(lang, settings.webapp_url, is_admin(call.from_user.id, settings)))

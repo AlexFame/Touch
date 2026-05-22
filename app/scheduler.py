@@ -42,7 +42,7 @@ async def send_24h_reminders(bot: Bot, settings: Settings) -> None:
                 time=starts_at.strftime("%H:%M"),
                 duration=row["duration_minutes"],
             ),
-            reply_markup=reminder_kb(row["id"], lang),
+            reply_markup=reminder_kb(row["id"], lang, settings.webapp_url),
         )
         await db_mark_reminder_sent(row["id"])
 
