@@ -394,15 +394,37 @@ async def cancel_booking_endpoint(
     if not row:
         raise HTTPException(status_code=404, detail="Booking not found")
 
-    if row["google_event_id"]:
-        calendar.delete_event(row["google_event_id"])
+    # DB write first — if this fails nothing else has changed yet.
     await db_update_appointment_status(appointment_id, "cancelled")
-    
+
+    # Calendar delete is non-critical: a failure must not return 500 after the
+    # cancellation is already committed in the DB.
+    try:
+        if row["google_event_id"]:
+            calendar.delete_event(row["google_event_id"])
+    except Exception as exc:
+        logger.warning(
+            "Cancel %s: failed to delete Calendar event — %s", appointment_id, exc
+        )
+
     from app.handlers import get_appointment_admin_summary
     from app.i18n import t
     summary = await get_appointment_admin_summary(appointment_id)
-    for admin_id in settings.admin_ids:
-        await bot.send_message(admin_id, t("ru", "admin_client_cancelled", summary=summary))
+
+    # Fire-and-forget: Telegram sends must not block or fail the HTTP response.
+    async def _send_notifications() -> None:
+        for admin_id in settings.admin_ids:
+            try:
+                await bot.send_message(
+                    admin_id, t("ru", "admin_client_cancelled", summary=summary)
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Cancel %s: failed to notify admin %s — %s",
+                    appointment_id, admin_id, exc,
+                )
+
+    asyncio.create_task(_send_notifications())
     return {"status": "ok"}
 
 
