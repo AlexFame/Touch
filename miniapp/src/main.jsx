@@ -638,7 +638,7 @@ function App() {
     let dragging = false;
     let locked = false;
     let cancelled = false;
-    const getEl = () => document.querySelector(".app-swipe-layer");
+    const getEl = () => document.querySelector("main > section");
 
     const onTouchStart = (e) => {
       if (e.touches[0].clientX > 40) return;
@@ -673,28 +673,26 @@ function App() {
       dragging = false;
       const el = getEl();
       if (cancelled || !el) {
-        if (el) {
-          el.style.transform = "";
-          el.style.transition = "";
-          el.style.boxShadow = "";
-        }
+        if (el) { el.style.transform = ""; el.style.transition = ""; el.style.boxShadow = ""; }
         cancelled = false;
         return;
       }
       const dx = e.changedTouches[0].clientX - startX;
       if (dx > 90) {
         tg?.HapticFeedback?.impactOccurred("light");
-        el.style.transform = "";
-        el.style.transition = "";
-        el.style.boxShadow = "";
-        goBack();
+        el.style.transition = "transform 0.22s ease-out";
+        el.style.transform = `translate3d(${window.innerWidth}px, 0, 0)`;
+        setTimeout(() => {
+          goBack();
+          el.style.transform = "";
+          el.style.transition = "";
+          el.style.boxShadow = "";
+        }, 220);
       } else {
         el.style.transition = "transform 0.3s ease-out";
         el.style.transform = "";
         el.style.boxShadow = "";
-        setTimeout(() => {
-          el.style.transition = "";
-        }, 300);
+        setTimeout(() => { el.style.transition = ""; }, 300);
       }
     };
 
