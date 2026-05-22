@@ -280,17 +280,22 @@ async def create_booking(
         package_expires_at=package_expires,
     )
 
-    # Google Calendar is non-critical: a failure here only means no calendar
-    # event, the booking itself is already safely committed.
-    google_event_id = calendar.create_event(
-        summary=f"Massage - {clean_name} - {admin_title.split(' - ')[0]}",
-        description=calendar_description + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
-        start=start,
-        end=end,
-        appointment_id=appointment_id,
-    )
-    if google_event_id:
-        await db_update_appointment_google_event_id(appointment_id, google_event_id)
+    # Google Calendar is non-critical: a failure must never abort the booking
+    # or skip notifications — the slot is already committed in the DB.
+    try:
+        google_event_id = calendar.create_event(
+            summary=f"Massage - {clean_name} - {admin_title.split(' - ')[0]}",
+            description=calendar_description + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
+            start=start,
+            end=end,
+            appointment_id=appointment_id,
+        )
+        if google_event_id:
+            await db_update_appointment_google_event_id(appointment_id, google_event_id)
+    except Exception as exc:
+        logger.warning(
+            "Booking %s: Google Calendar sync failed — %s", appointment_id, exc
+        )
 
     client_text = (
         "✅ Запись подтверждена\n\n"
