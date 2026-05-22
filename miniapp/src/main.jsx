@@ -688,9 +688,17 @@ function App() {
         el.style.transition = "transform 0.22s ease-out";
         el.style.transform = `translate3d(${window.innerWidth}px, 0, 0)`;
         setTimeout(() => {
-          clearSwipeStyles(el);
-          el.scrollTop = 0;
           goBack();
+          // Wait for React to commit the new screen before snapping
+          // the element back. Without this delay, clearSwipeStyles() fires
+          // while the old screen content is still rendered, making it
+          // visibly flash back to centre before the new screen appears.
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              clearSwipeStyles(el);
+              el.scrollTop = 0;
+            });
+          });
         }, 220);
       } else {
         el.style.transition = "transform 0.3s ease-out";
