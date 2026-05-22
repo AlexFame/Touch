@@ -610,6 +610,11 @@ function App() {
   }
 
   function goBack() {
+    if (step === "servicesInfo" && selectedInfoService) {
+      setSelectedInfoService(null);
+      return;
+    }
+
     const backMap = {
       servicesInfo: "home",
       packageChoice: "servicesInfo",
@@ -631,6 +636,7 @@ function App() {
     let startX = 0;
     let startY = 0;
     let dragging = false;
+    let locked = false;
     let cancelled = false;
     const getEl = () => document.querySelector("main > section");
 
@@ -639,6 +645,7 @@ function App() {
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       dragging = true;
+      locked = false;
       cancelled = false;
     };
 
@@ -646,10 +653,16 @@ function App() {
       if (!dragging || cancelled) return;
       const dx = e.touches[0].clientX - startX;
       const dy = Math.abs(e.touches[0].clientY - startY);
+      if (!locked) {
+        if (dx < 8 && dy < 8) return;
+        if (dy > dx) { cancelled = true; return; }
+        locked = true;
+      }
       if (dy > 60 || dx < 0) { cancelled = true; return; }
+      e.preventDefault();
       const el = getEl();
       if (el) {
-        el.style.transform = `translateX(${dx}px)`;
+        el.style.transform = `translate3d(${dx}px, 0, 0)`;
         el.style.transition = "none";
         el.style.boxShadow = `-${dx * 0.15}px 0 30px rgba(0,0,0,0.4)`;
       }
@@ -668,7 +681,7 @@ function App() {
       if (dx > 90) {
         tg?.HapticFeedback?.impactOccurred("light");
         el.style.transition = "transform 0.22s ease-out";
-        el.style.transform = `translateX(${window.innerWidth}px)`;
+        el.style.transform = `translate3d(${window.innerWidth}px, 0, 0)`;
         setTimeout(() => {
           goBack();
           el.style.transform = "";
@@ -684,14 +697,14 @@ function App() {
     };
 
     document.addEventListener("touchstart", onTouchStart, { passive: true });
-    document.addEventListener("touchmove", onTouchMove, { passive: true });
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
     document.addEventListener("touchend", onTouchEnd, { passive: true });
     return () => {
       document.removeEventListener("touchstart", onTouchStart);
       document.removeEventListener("touchmove", onTouchMove);
       document.removeEventListener("touchend", onTouchEnd);
     };
-  }, [step, bookingSource]);
+  }, [step, bookingSource, selectedInfoService]);
 
   if (loading) {
     return (
