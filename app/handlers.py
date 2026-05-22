@@ -164,21 +164,21 @@ async def menu_main(call: CallbackQuery, settings: Settings, state: FSMContext) 
 
 
 @router.callback_query(F.data == "menu:prices")
-async def prices(call: CallbackQuery) -> None:
+async def prices(call: CallbackQuery, settings: Settings) -> None:
     lang = await get_lang(call.from_user.id)
-    await call.message.edit_text(t(lang, "prices_text"), reply_markup=main_menu_kb(lang))
+    await call.message.edit_text(t(lang, "prices_text"), reply_markup=main_menu_kb(lang, settings.webapp_url))
     await call.answer()
 
 
 @router.callback_query(F.data == "menu:contacts")
-async def contacts(call: CallbackQuery) -> None:
+async def contacts(call: CallbackQuery, settings: Settings) -> None:
     lang = await get_lang(call.from_user.id)
-    await call.message.edit_text(t(lang, "contacts_text"), reply_markup=main_menu_kb(lang))
+    await call.message.edit_text(t(lang, "contacts_text"), reply_markup=main_menu_kb(lang, settings.webapp_url))
     await call.answer()
 
 
 @router.callback_query(F.data == "menu:package")
-async def package_status(call: CallbackQuery) -> None:
+async def package_status(call: CallbackQuery, settings: Settings) -> None:
     lang = await get_lang(call.from_user.id)
     client = await db_ensure_client(call.from_user.id)
     package = await db_get_active_package(client["id"])
@@ -192,7 +192,7 @@ async def package_status(call: CallbackQuery) -> None:
             total=package["sessions_total"],
             expires=package["expires_at"] or "-",
         )
-    await call.message.edit_text(text, reply_markup=main_menu_kb(lang))
+    await call.message.edit_text(text, reply_markup=main_menu_kb(lang, settings.webapp_url))
     await call.answer()
 
 
@@ -204,7 +204,7 @@ async def my_booking_handler(call: CallbackQuery, settings: Settings) -> None:
     now_iso = datetime.now(settings.tzinfo).isoformat()
     rows = await db_get_active_bookings(client["id"], now_iso)
     if not rows:
-        await call.message.edit_text(t(lang, "no_active_booking"), reply_markup=main_menu_kb(lang, is_admin(call.from_user.id, settings)))
+        await call.message.edit_text(t(lang, "no_active_booking"), reply_markup=main_menu_kb(lang, settings.webapp_url, is_admin(call.from_user.id, settings)))
         await call.answer()
         return
 
@@ -438,7 +438,7 @@ async def client_cancel_visit(call: CallbackQuery, settings: Settings, calendar:
     summary = await get_appointment_admin_summary(appointment_id)
     for admin_id in settings.admin_ids:
         await bot.send_message(admin_id, t("ru", "admin_client_cancelled", summary=summary))
-    await call.message.edit_text(t(lang, "client_cancelled"), reply_markup=book_shortcut_kb(lang))
+    await call.message.edit_text(t(lang, "client_cancelled"), reply_markup=book_shortcut_kb(lang, settings.webapp_url))
     await call.answer()
 
 
@@ -600,7 +600,7 @@ async def admin_cancel(call: CallbackQuery, settings: Settings, calendar: Calend
         row["telegram_id"],
         "Ваша запись была отменена администратором.\n\n"
         "Если хотите выбрать другое время, откройте запись в боте.",
-        reply_markup=book_shortcut_kb(client_lang),
+        reply_markup=book_shortcut_kb(client_lang, settings.webapp_url),
     )
 
     await call.message.edit_text("🚫 Запись отменена администратором.\n\n" + summary, parse_mode="HTML")
@@ -719,7 +719,7 @@ async def admin_reschedule_time(call: CallbackQuery, state: FSMContext, settings
         await bot.send_message(
             row["telegram_id"],
             "Ваша запись перенесена администратором:\n\n" + summary,
-            reply_markup=book_shortcut_kb(row["lang"]),
+            reply_markup=book_shortcut_kb(row["lang"], settings.webapp_url),
         )
     except Exception:
         pass

@@ -26,9 +26,10 @@ def language_kb() -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def main_menu_kb(lang: str, is_admin: bool = False) -> InlineKeyboardMarkup:
+def main_menu_kb(lang: str, webapp_url: str = "", is_admin: bool = False) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=t(lang, "book"), callback_data="menu:book")
+    if webapp_url:
+        kb.button(text=t(lang, "book"), web_app=WebAppInfo(url=webapp_url))
     kb.button(text=t(lang, "my_booking"), callback_data="menu:my_booking")
     kb.button(text=t(lang, "prices"), callback_data="menu:prices")
     kb.button(text=t(lang, "contacts"), callback_data="menu:contacts")
@@ -108,9 +109,10 @@ def reminder_kb(appointment_id: int, lang: str) -> InlineKeyboardMarkup:
     return kb.as_markup()
 
 
-def book_shortcut_kb(lang: str) -> InlineKeyboardMarkup:
+def book_shortcut_kb(lang: str, webapp_url: str = "") -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text=t(lang, "book"), callback_data="menu:book")
+    if webapp_url:
+        kb.button(text=t(lang, "book"), web_app=WebAppInfo(url=webapp_url))
     kb.adjust(1)
     return kb.as_markup()
 

@@ -52,12 +52,12 @@ async def send_followups(bot: Bot, settings: Settings) -> None:
 
     rows_7d = await db_get_pending_followups_7d((now - timedelta(days=7)).isoformat())
     for row in rows_7d:
-        await bot.send_message(row["telegram_id"], t(row["lang"], "followup_7d"), reply_markup=book_shortcut_kb(row["lang"]))
+        await bot.send_message(row["telegram_id"], t(row["lang"], "followup_7d"), reply_markup=book_shortcut_kb(row["lang"], settings.webapp_url))
         await db_mark_followup_7d_sent(row["id"])
 
     rows_30d = await db_get_pending_followups_30d((now - timedelta(days=30)).isoformat())
     for row in rows_30d:
-        await bot.send_message(row["telegram_id"], t(row["lang"], "followup_30d"), reply_markup=book_shortcut_kb(row["lang"]))
+        await bot.send_message(row["telegram_id"], t(row["lang"], "followup_30d"), reply_markup=book_shortcut_kb(row["lang"], settings.webapp_url))
         await db_mark_followup_30d_sent(row["id"])
 
 
