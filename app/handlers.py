@@ -64,6 +64,10 @@ def welcome_text(lang: str) -> str:
     return WELCOME_TEXTS["ua" if lang == "ua" else "ru"]
 
 
+def admin_welcome_text() -> str:
+    return "Массажная студия «Прикосновение»\n\nОткрой мини-приложение или админку."
+
+
 def _html_escape(value) -> str:
     return html.escape(str(value or ""))
 
@@ -125,11 +129,12 @@ async def start(message: Message, state: FSMContext, settings: Settings) -> None
     lang = telegram_lang(message.from_user)
     await db_ensure_client(message.from_user.id, lang)
     await db_update_client_lang(message.from_user.id, lang)
+    admin = is_admin(message.from_user.id, settings)
     await message.answer(
-        welcome_text(lang),
+        admin_welcome_text() if admin else welcome_text(lang),
         reply_markup=open_miniapp_kb(
             settings.webapp_url,
-            is_admin=is_admin(message.from_user.id, settings),
+            is_admin=admin,
             lang=lang,
         ),
     )
@@ -468,7 +473,7 @@ async def admin_menu(call: CallbackQuery, settings: Settings) -> None:
     if not is_admin(call.from_user.id, settings):
         await call.answer("No access")
         return
-    await call.message.edit_text("Админка записей:", reply_markup=admin_menu_kb())
+    await call.message.answer("Админка записей:", reply_markup=admin_menu_kb())
     await call.answer()
 
 

@@ -969,10 +969,15 @@ async def db_get_booked_appointments_for_date(day_iso: str) -> list[DBRow]:
 
 async def db_get_upcoming_booked_appointments(from_iso: str, limit: int = 20) -> list[DBRow]:
     """Return upcoming booked appointments from a local ISO datetime string."""
-    from_dt = datetime.fromisoformat(from_iso)
+    def as_datetime(value) -> datetime:
+        if isinstance(value, datetime):
+            return value
+        return datetime.fromisoformat(str(value))
+
+    from_dt = as_datetime(from_iso)
 
     def is_upcoming(row: DBRow) -> bool:
-        starts_at = datetime.fromisoformat(row["starts_at"])
+        starts_at = as_datetime(row["starts_at"])
         if starts_at.tzinfo is None and from_dt.tzinfo is not None:
             starts_at = starts_at.replace(tzinfo=from_dt.tzinfo)
         elif starts_at.tzinfo is not None and from_dt.tzinfo is None:
