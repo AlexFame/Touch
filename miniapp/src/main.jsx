@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BookingFlow,
@@ -260,6 +260,7 @@ function App() {
   const [lang] = useState(() => getInitialLang(tg));
   const tr = UI_TEXT[lang];
   const backendLang = apiLang(lang);
+  const screenContentRef = useRef(null);
   const [initialState] = useState(readSavedState);
   const [step, setStep] = useState(initialState.step || "home");
   const [bookingSource, setBookingSource] = useState(
@@ -735,11 +736,21 @@ function App() {
   }
 
   const sectionClassName = getSectionClassName(step);
+  const contentMotionSignature = `${step}:${selectedInfoService?.id || ""}`;
+
+  useLayoutEffect(() => {
+    const el = screenContentRef.current;
+    if (!el) return;
+    el.classList.remove("screen-content-enter");
+    window.requestAnimationFrame(() => {
+      el.classList.add("screen-content-enter");
+    });
+  }, [contentMotionSignature]);
 
   return (
     <Shell>
       <section className={sectionClassName}>
-        <div className="screen-content">
+        <div ref={screenContentRef} className="screen-content">
           {step === "home" && (
             <HomeScreen
               error={error}
