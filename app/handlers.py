@@ -1,7 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 import html
 
 from aiogram import F, Router, Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
@@ -9,10 +10,11 @@ from aiogram.types import CallbackQuery, Message
 from app.booking import first_visit_bonus_available, format_summary, get_free_slots, parse_local_datetime
 from app.calendar_client import CalendarClient
 from app.config import Settings
-from app.database import db_ensure_client, db_update_client_lang, db_update_client_profile, db_get_services, db_get_service, db_create_appointment, db_update_appointment_google_event_id, db_update_appointment_time, db_create_package, db_get_client_appointment, db_update_appointment_status, db_get_appointments_today, db_get_appointment_with_client, db_mark_first_visit_bonus_used, db_increment_package_sessions, db_increment_client_no_show_count, db_mark_review_sent, db_get_google_event_id, db_get_active_bookings, db_get_active_package, db_get_appointment_admin_summary_data, db_get_booked_appointments_for_date, db_get_upcoming_booked_appointments, db_get_admin_booking_counts, db_admin_storage_label
+from app.database import db_ensure_client, db_update_client_lang, db_update_client_profile, db_get_services, db_get_service, db_create_appointment, db_update_appointment_google_event_id, db_update_appointment_time, db_create_package, db_get_client_appointment, db_update_appointment_status, db_get_appointments_today, db_get_appointment_with_client, db_mark_first_visit_bonus_used, db_increment_package_sessions, db_increment_client_no_show_count, db_mark_review_sent, db_get_google_event_id, db_get_active_bookings, db_get_active_package, db_get_appointment_admin_summary_data, db_get_booked_appointments_for_date, db_get_upcoming_booked_appointments, db_get_upcoming_admin_appointments, db_get_admin_appointments_for_date, db_search_admin_clients
 from app.i18n import t
 from app.keyboards import (
     admin_appointment_kb,
+    admin_dates_kb,
     admin_menu_kb,
     book_shortcut_kb,
     confirm_kb,
@@ -83,6 +85,16 @@ def _format_admin_status(status: str | None) -> str:
     return labels.get(status or "", status or "-")
 
 
+def _format_package_info(row) -> str:
+    total = row.get("package_sessions_total")
+    if not total:
+        return ""
+    used = row.get("package_sessions_used") or 0
+    left = max(int(total) - int(used), 0)
+    expires = row.get("package_expires_at") or "-"
+    return f"\nПакет: {left}/{total} осталось, до {expires}"
+
+
 def _format_admin_contact(row) -> str:
     final_contact = row["contact"] if "contact" in row.keys() and row["contact"] else row.get("phone")
     telegram_id = row.get("telegram_id")
@@ -113,14 +125,50 @@ def _format_admin_appointment(row) -> str:
         f"Клиент: {_html_escape(row.get('name') or 'Без имени')}\n"
         f"{_format_admin_contact(row)}\n"
         f"Статус: {_html_escape(_format_admin_status(row.get('status')))}"
+        f"{_html_escape(_format_package_info(row))}"
     )
+
+
+def _format_admin_client(row) -> str:
+    name = _html_escape(row.get("name") or "Без имени")
+    contact = row.get("contact") or row.get("phone") or "не указан"
+    lines = [f"Клиент: {name}", f"Контакт: {_html_escape(contact)}"]
+    if row.get("telegram_id"):
+        lines.append(f'Telegram: <a href="tg://user?id={row["telegram_id"]}">открыть профиль</a>')
+    package = _format_package_info(row)
+    if package:
+        lines.append(_html_escape(package.strip()))
+    return "\n".join(lines)
+
+
+def _parse_admin_date(value: str, settings: Settings) -> str | None:
+    raw = value.strip()
+    for fmt in ("%d.%m.%Y", "%d.%m.%y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt).date().isoformat()
+        except ValueError:
+            pass
+    try:
+        parsed = datetime.strptime(raw, "%d.%m").date()
+        current_year = datetime.now(settings.tzinfo).year
+        return date(current_year, parsed.month, parsed.day).isoformat()
+    except ValueError:
+        return None
 
 
 async def get_appointment_admin_summary(appointment_id: int) -> str:
     row = await db_get_appointment_admin_summary_data(appointment_id)
     if not row:
-        return f"Запись #{appointment_id}"
+        return "Данные записи недоступны"
     return _format_admin_appointment(row)
+
+
+async def _edit_admin_message(message, text: str, reply_markup=None, parse_mode: str | None = None) -> None:
+    try:
+        await message.edit_text(text, reply_markup=reply_markup, parse_mode=parse_mode)
+    except TelegramBadRequest as exc:
+        if "message is not modified" not in str(exc):
+            raise
 
 
 @router.message(CommandStart())
@@ -396,7 +444,7 @@ async def confirm_booking(
 
     google_event_id = calendar.create_event(
         summary=f"Massage - {data['name']}",
-        description=data["summary"] + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
+        description=data["summary"],
         start=start,
         end=end,
         appointment_id=appointment_id,
@@ -473,21 +521,43 @@ async def admin_menu(call: CallbackQuery, settings: Settings) -> None:
     if not is_admin(call.from_user.id, settings):
         await call.answer("No access")
         return
-    await call.message.edit_text("Админка записей\n\nВыберите, какие записи показать:", reply_markup=admin_menu_kb())
+    await _edit_admin_message(call.message, "Админка записей\n\nВыберите, какие записи показать:", reply_markup=admin_menu_kb())
     await call.answer()
 
 
 async def _send_admin_appointments(call: CallbackQuery, rows, empty_text: str, title: str) -> None:
     if not rows:
-        await call.message.edit_text(empty_text, reply_markup=admin_menu_kb())
+        await _edit_admin_message(call.message, empty_text, reply_markup=admin_menu_kb())
         await call.answer()
         return
 
-    await call.message.edit_text(title, reply_markup=admin_menu_kb())
+    await _edit_admin_message(call.message, title, reply_markup=admin_menu_kb())
     for row in rows:
         await call.message.answer(
             _format_admin_appointment(row),
-            reply_markup=admin_appointment_kb(row["id"]),
+            reply_markup=admin_appointment_kb(row["id"]) if row.get("status") == "booked" else None,
+            parse_mode="HTML",
+        )
+    await call.answer()
+
+
+async def _send_admin_appointments_grouped(call: CallbackQuery, rows, empty_text: str, title: str) -> None:
+    if not rows:
+        await _edit_admin_message(call.message, empty_text, reply_markup=admin_menu_kb())
+        await call.answer()
+        return
+
+    await _edit_admin_message(call.message, title, reply_markup=admin_menu_kb())
+    current_day = None
+    for row in rows:
+        day = str(row["starts_at"])[:10]
+        if day != current_day:
+            current_day = day
+            label = datetime.fromisoformat(day).strftime("%d.%m.%Y")
+            await call.message.answer(f"📅 {label}")
+        await call.message.answer(
+            _format_admin_appointment(row),
+            reply_markup=admin_appointment_kb(row["id"]) if row.get("status") == "booked" else None,
             parse_mode="HTML",
         )
     await call.answer()
@@ -524,26 +594,114 @@ async def admin_upcoming(call: CallbackQuery, settings: Settings) -> None:
     today_iso = datetime.now(settings.tzinfo).date().isoformat()
     try:
         rows = await db_get_upcoming_booked_appointments(today_iso, limit=20)
-        if rows:
-            await _send_admin_appointments(call, rows, "Ближайших активных записей нет.", "Ближайшие активные записи:")
-            return
-        counts = await db_get_admin_booking_counts()
-        await _send_admin_appointments(
-            call,
-            rows,
-            "Ближайших активных записей нет.\n\n"
-            f"Диагностика: всего записей в этой БД: {counts['total_count'] or 0}, "
-            f"активных booked: {counts['booked_count'] or 0}.\n"
-            f"Storage: {db_admin_storage_label()}",
-            "Ближайшие активные записи:",
-        )
-    except Exception as exc:
-        await call.message.edit_text(
-            "Не удалось загрузить ближайшие записи.\n\n"
-            f"Ошибка: {type(exc).__name__}: {_html_escape(exc)}",
+        await _send_admin_appointments(call, rows, "Ближайших активных записей нет.", "Ближайшие активные записи:")
+    except Exception:
+        await _edit_admin_message(
+            call.message,
+            "Не удалось загрузить ближайшие записи. Попробуйте позже.",
             reply_markup=admin_menu_kb(),
         )
         await call.answer()
+
+
+@router.callback_query(F.data == "admin:all_bookings")
+async def admin_all_bookings(call: CallbackQuery, settings: Settings) -> None:
+    if not is_admin(call.from_user.id, settings):
+        await call.answer("No access")
+        return
+
+    today_iso = datetime.now(settings.tzinfo).date().isoformat()
+    rows = await db_get_upcoming_admin_appointments(today_iso, limit=100)
+    await _send_admin_appointments_grouped(call, rows, "Предстоящих записей нет.", "Все предстоящие записи:")
+
+
+@router.callback_query(F.data == "admin:bookings_by_date")
+async def admin_bookings_by_date(call: CallbackQuery, settings: Settings, state: FSMContext) -> None:
+    if not is_admin(call.from_user.id, settings):
+        await call.answer("No access")
+        return
+
+    await state.set_state(BookingState.admin_booking_date)
+    await _edit_admin_message(
+        call.message,
+        "Выберите дату или отправьте дату сообщением в формате ДД.ММ.ГГГГ.",
+        reply_markup=admin_dates_kb(),
+    )
+    await call.answer()
+
+
+@router.callback_query(F.data.startswith("admin_date:"), BookingState.admin_booking_date)
+async def admin_bookings_for_selected_date(call: CallbackQuery, settings: Settings, state: FSMContext) -> None:
+    if not is_admin(call.from_user.id, settings):
+        await call.answer("No access")
+        return
+
+    day_iso = call.data.split(":", 1)[1]
+    rows = await db_get_admin_appointments_for_date(day_iso)
+    label = datetime.fromisoformat(day_iso).strftime("%d.%m.%Y")
+    await state.clear()
+    await _send_admin_appointments(call, rows, f"На {label} записей нет.", f"Записи на {label}:")
+
+
+@router.message(BookingState.admin_booking_date)
+async def admin_bookings_for_typed_date(message: Message, settings: Settings, state: FSMContext) -> None:
+    if not is_admin(message.from_user.id, settings):
+        return
+
+    day_iso = _parse_admin_date(message.text or "", settings)
+    if not day_iso:
+        await message.answer("Не понял дату. Отправьте дату в формате ДД.ММ.ГГГГ.")
+        return
+
+    rows = await db_get_admin_appointments_for_date(day_iso)
+    label = datetime.fromisoformat(day_iso).strftime("%d.%m.%Y")
+    await state.clear()
+    if not rows:
+        await message.answer(f"На {label} записей нет.", reply_markup=admin_menu_kb())
+        return
+    await message.answer(f"Записи на {label}:", reply_markup=admin_menu_kb())
+    for row in rows:
+        await message.answer(
+            _format_admin_appointment(row),
+            reply_markup=admin_appointment_kb(row["id"]) if row.get("status") == "booked" else None,
+            parse_mode="HTML",
+        )
+
+
+@router.callback_query(F.data == "admin:find_client")
+async def admin_find_client(call: CallbackQuery, settings: Settings, state: FSMContext) -> None:
+    if not is_admin(call.from_user.id, settings):
+        await call.answer("No access")
+        return
+
+    await state.set_state(BookingState.admin_client_search)
+    await _edit_admin_message(
+        call.message,
+        "Отправьте имя, телефон, @username или Telegram ID клиента.",
+        reply_markup=admin_menu_kb(),
+    )
+    await call.answer()
+
+
+@router.message(BookingState.admin_client_search)
+async def admin_find_client_results(message: Message, settings: Settings, state: FSMContext) -> None:
+    if not is_admin(message.from_user.id, settings):
+        return
+
+    query = (message.text or "").strip()
+    if len(query) < 2:
+        await message.answer("Введите минимум 2 символа для поиска.")
+        return
+
+    rows = await db_search_admin_clients(query, limit=10)
+    await state.clear()
+    if not rows:
+        await message.answer("Клиенты не найдены.", reply_markup=admin_menu_kb())
+        return
+
+    await message.answer("Найденные клиенты:", reply_markup=admin_menu_kb())
+    for row in rows:
+        await message.answer(_format_admin_client(row), parse_mode="HTML")
 
 
 @router.callback_query(F.data.startswith("admin:complete:"))
@@ -723,18 +881,18 @@ async def admin_reschedule_time(call: CallbackQuery, state: FSMContext, settings
         contact=final_contact,
         bonus=bool(row["first_visit_bonus_applied"]),
     )
-    description = summary + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min"
+    description = summary
     if row["google_event_id"]:
         calendar.update_event(
             row["google_event_id"],
-            summary=f"Massage - {row['name'] or row['telegram_id']}",
+            summary=f"Massage - {row['name'] or 'Без имени'}",
             description=description,
             start=start,
             end=end,
         )
     else:
         google_event_id = calendar.create_event(
-            summary=f"Massage - {row['name'] or row['telegram_id']}",
+            summary=f"Massage - {row['name'] or 'Без имени'}",
             description=description,
             start=start,
             end=end,

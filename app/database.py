@@ -2,7 +2,6 @@ import os
 from datetime import date, datetime
 import aiosqlite
 from pathlib import Path
-from urllib.parse import urlparse
 
 try:
     import asyncpg
@@ -1006,37 +1005,119 @@ async def db_get_upcoming_booked_appointments(from_date_iso: str, limit: int = 2
             return upcoming[:limit]
 
 
-async def db_get_admin_booking_counts() -> DBRow:
+async def db_get_upcoming_admin_appointments(from_date_iso: str, limit: int = 100) -> list[DBRow]:
+    """Return all upcoming appointments for admin screens."""
     if DATABASE_URL:
         async with _pg_pool.acquire() as conn:
-            row = await conn.fetchrow(
+            rows = await conn.fetch(
                 """
-                SELECT
-                    COUNT(*) AS total_count,
-                    COUNT(*) FILTER (WHERE status = 'booked') AS booked_count
-                FROM appointments
-                """
+                SELECT a.*, c.name, c.phone, c.contact, c.telegram_id, c.lang, s.title_ru, s.title_ua,
+                       p.sessions_total AS package_sessions_total,
+                       p.sessions_used AS package_sessions_used,
+                       p.expires_at AS package_expires_at
+                FROM appointments a
+                JOIN clients c ON c.id = a.client_id
+                JOIN services s ON s.id = a.service_id
+                LEFT JOIN packages p ON p.id = (
+                    SELECT p2.id FROM packages p2
+                    WHERE p2.client_id = c.id
+                    AND p2.package_paid = 1
+                    AND p2.sessions_used < p2.sessions_total
+                    ORDER BY p2.created_at DESC
+                    LIMIT 1
+                )
+                ORDER BY a.starts_at
+                """,
             )
-            return DBRow(dict(row))
+            upcoming = [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) >= from_date_iso]
+            return upcoming[:limit]
     async with aiosqlite.connect(DB_PATH) as db:
         db.row_factory = aiosqlite.Row
         cur = await db.execute(
             """
-            SELECT
-                COUNT(*) AS total_count,
-                SUM(CASE WHEN status = 'booked' THEN 1 ELSE 0 END) AS booked_count
-            FROM appointments
+            SELECT a.*, c.name, c.phone, c.contact, c.telegram_id, c.lang, s.title_ru, s.title_ua,
+                   p.sessions_total AS package_sessions_total,
+                   p.sessions_used AS package_sessions_used,
+                   p.expires_at AS package_expires_at
+            FROM appointments a
+            JOIN clients c ON c.id = a.client_id
+            JOIN services s ON s.id = a.service_id
+            LEFT JOIN packages p ON p.id = (
+                SELECT p2.id FROM packages p2
+                WHERE p2.client_id = c.id
+                AND p2.package_paid = 1
+                AND p2.sessions_used < p2.sessions_total
+                ORDER BY p2.created_at DESC
+                LIMIT 1
+            )
+            ORDER BY a.starts_at
             """
         )
-        row = await cur.fetchone()
-        return DBRow(dict(row))
+        rows = await cur.fetchall()
+        upcoming = [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) >= from_date_iso]
+        return upcoming[:limit]
 
 
-def db_admin_storage_label() -> str:
-    if not DATABASE_URL:
-        return f"SQLite: {DB_PATH}"
+async def db_get_admin_appointments_for_date(day_iso: str) -> list[DBRow]:
+    rows = await db_get_upcoming_admin_appointments(day_iso, limit=300)
+    return [row for row in rows if _date_iso(row["starts_at"]) == day_iso]
 
-    parsed = urlparse(DATABASE_URL)
-    host = parsed.hostname or "unknown-host"
-    database = parsed.path.lstrip("/") or "unknown-db"
-    return f"PostgreSQL: {host}/{database}"
+
+async def db_search_admin_clients(query: str, limit: int = 10) -> list[DBRow]:
+    pattern = f"%{query.strip().lower()}%"
+    if DATABASE_URL:
+        async with _pg_pool.acquire() as conn:
+            rows = await conn.fetch(
+                """
+                SELECT c.*,
+                       p.sessions_total AS package_sessions_total,
+                       p.sessions_used AS package_sessions_used,
+                       p.expires_at AS package_expires_at
+                FROM clients c
+                LEFT JOIN packages p ON p.id = (
+                    SELECT p2.id FROM packages p2
+                    WHERE p2.client_id = c.id
+                    AND p2.package_paid = 1
+                    AND p2.sessions_used < p2.sessions_total
+                    ORDER BY p2.created_at DESC
+                    LIMIT 1
+                )
+                WHERE LOWER(COALESCE(c.name, '')) LIKE $1
+                   OR LOWER(COALESCE(c.phone, '')) LIKE $1
+                   OR LOWER(COALESCE(c.contact, '')) LIKE $1
+                   OR CAST(c.telegram_id AS TEXT) LIKE $1
+                ORDER BY COALESCE(c.name, ''), c.telegram_id
+                LIMIT $2
+                """,
+                pattern,
+                limit,
+            )
+            return [DBRow(dict(r)) for r in rows]
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            """
+            SELECT c.*,
+                   p.sessions_total AS package_sessions_total,
+                   p.sessions_used AS package_sessions_used,
+                   p.expires_at AS package_expires_at
+            FROM clients c
+            LEFT JOIN packages p ON p.id = (
+                SELECT p2.id FROM packages p2
+                WHERE p2.client_id = c.id
+                AND p2.package_paid = 1
+                AND p2.sessions_used < p2.sessions_total
+                ORDER BY p2.created_at DESC
+                LIMIT 1
+            )
+            WHERE LOWER(COALESCE(c.name, '')) LIKE ?
+               OR LOWER(COALESCE(c.phone, '')) LIKE ?
+               OR LOWER(COALESCE(c.contact, '')) LIKE ?
+               OR CAST(c.telegram_id AS TEXT) LIKE ?
+            ORDER BY COALESCE(c.name, ''), c.telegram_id
+            LIMIT ?
+            """,
+            (pattern, pattern, pattern, pattern, limit),
+        )
+        rows = await cur.fetchall()
+        return [DBRow(dict(r)) for r in rows]

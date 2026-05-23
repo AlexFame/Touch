@@ -84,8 +84,22 @@ def admin_menu_kb() -> InlineKeyboardMarkup:
     kb.button(text="📅 Сегодня", callback_data="admin:today")
     kb.button(text="📆 Завтра", callback_data="admin:tomorrow")
     kb.button(text="🗓 Ближайшие записи", callback_data="admin:upcoming")
+    kb.button(text="📚 Все записи", callback_data="admin:all_bookings")
+    kb.button(text="🔎 Записи по дате", callback_data="admin:bookings_by_date")
+    kb.button(text="👤 Найти клиента", callback_data="admin:find_client")
     kb.button(text="⬅️ Главное меню", callback_data="menu:main")
     kb.adjust(1)
+    return kb.as_markup()
+
+
+def admin_dates_kb(lang: str = "ru", days: int = 30) -> InlineKeyboardMarkup:
+    kb = InlineKeyboardBuilder()
+    today = date.today()
+    for i in range(days):
+        d = today + timedelta(days=i)
+        kb.button(text=d.strftime("%d.%m"), callback_data=f"admin_date:{d.isoformat()}")
+    kb.button(text="⬅️ Админка", callback_data="admin:menu")
+    kb.adjust(3)
     return kb.as_markup()
 
 

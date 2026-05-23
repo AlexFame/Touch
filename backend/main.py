@@ -255,7 +255,6 @@ async def create_booking(
     calendar_description = (
         summary + 
         f"\nКонтакт: {final_contact or 'не указан'}" +
-        f"\nTelegram ID: {telegram_id}" +
         (f"\nUsername: @{username}" if username else "")
     )
     
@@ -285,7 +284,7 @@ async def create_booking(
     try:
         google_event_id = calendar.create_event(
             summary=f"Massage - {clean_name} - {admin_title.split(' - ')[0]}",
-            description=calendar_description + f"\n\nAppointment ID: {appointment_id}\nBuffer: {settings.buffer_minutes} min",
+            description=calendar_description,
             start=start,
             end=end,
             appointment_id=appointment_id,
@@ -486,7 +485,6 @@ async def reschedule_booking_endpoint(
     calendar_description = (
         summary_text +
         f"\nКонтакт: {final_contact or 'не указан'}" +
-        f"\nTelegram ID: {telegram_id}" +
         (f"\nUsername: @{username}" if username else "")
     )
 
@@ -523,7 +521,7 @@ async def reschedule_booking_endpoint(
     try:
         google_event_id = calendar.create_event(
             summary=f"Massage - {client['name']} - {admin_title.split(' - ')[0]}",
-            description=calendar_description + f"\n\nAppointment ID: {new_appointment_id}\nBuffer: {settings.buffer_minutes} min",
+            description=calendar_description,
             start=start,
             end=end,
             appointment_id=new_appointment_id,

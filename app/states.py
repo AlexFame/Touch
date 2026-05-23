@@ -10,3 +10,5 @@ class BookingState(StatesGroup):
     confirming = State()
     admin_reschedule_date = State()
     admin_reschedule_time = State()
+    admin_booking_date = State()
+    admin_client_search = State()
