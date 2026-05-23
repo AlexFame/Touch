@@ -473,7 +473,7 @@ async def admin_menu(call: CallbackQuery, settings: Settings) -> None:
     if not is_admin(call.from_user.id, settings):
         await call.answer("No access")
         return
-    await call.message.answer("Админка записей:", reply_markup=admin_menu_kb())
+    await call.message.edit_text("Админка записей:", reply_markup=admin_menu_kb())
     await call.answer()
 
 
