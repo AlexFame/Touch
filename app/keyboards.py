@@ -81,13 +81,10 @@ def confirm_kb(lang: str) -> InlineKeyboardMarkup:
 
 def admin_menu_kb() -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
-    kb.button(text="📅 Сегодня", callback_data="admin:today")
-    kb.button(text="📆 Завтра", callback_data="admin:tomorrow")
-    kb.button(text="🗓 Ближайшие записи", callback_data="admin:upcoming")
     kb.button(text="📚 Все записи", callback_data="admin:all_bookings")
     kb.button(text="🔎 Записи по дате", callback_data="admin:bookings_by_date")
     kb.button(text="👤 Найти клиента", callback_data="admin:find_client")
-    kb.button(text="⬅️ Главное меню", callback_data="menu:main")
+    kb.button(text="👨‍💼 Админка", callback_data="admin:menu")
     kb.adjust(1)
     return kb.as_markup()
 
