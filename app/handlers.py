@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, Message
 from app.booking import first_visit_bonus_available, format_summary, get_free_slots, parse_local_datetime
 from app.calendar_client import CalendarClient
 from app.config import Settings
-from app.database import db_ensure_client, db_update_client_lang, db_update_client_profile, db_get_services, db_get_service, db_create_appointment, db_update_appointment_google_event_id, db_update_appointment_time, db_create_package, db_get_client_appointment, db_update_appointment_status, db_get_appointments_today, db_get_appointment_with_client, db_mark_first_visit_bonus_used, db_increment_package_sessions, db_increment_client_no_show_count, db_mark_review_sent, db_get_google_event_id, db_get_active_bookings, db_get_active_package, db_get_appointment_admin_summary_data, db_get_booked_appointments_for_date, db_get_upcoming_booked_appointments
+from app.database import db_ensure_client, db_update_client_lang, db_update_client_profile, db_get_services, db_get_service, db_create_appointment, db_update_appointment_google_event_id, db_update_appointment_time, db_create_package, db_get_client_appointment, db_update_appointment_status, db_get_appointments_today, db_get_appointment_with_client, db_mark_first_visit_bonus_used, db_increment_package_sessions, db_increment_client_no_show_count, db_mark_review_sent, db_get_google_event_id, db_get_active_bookings, db_get_active_package, db_get_appointment_admin_summary_data, db_get_booked_appointments_for_date, db_get_upcoming_booked_appointments, db_get_admin_booking_counts
 from app.i18n import t
 from app.keyboards import (
     admin_appointment_kb,
@@ -473,7 +473,7 @@ async def admin_menu(call: CallbackQuery, settings: Settings) -> None:
     if not is_admin(call.from_user.id, settings):
         await call.answer("No access")
         return
-    await call.message.edit_text("Админка записей:", reply_markup=admin_menu_kb())
+    await call.message.edit_text("Админка записей\n\nВыберите, какие записи показать:", reply_markup=admin_menu_kb())
     await call.answer()
 
 
@@ -522,8 +522,27 @@ async def admin_upcoming(call: CallbackQuery, settings: Settings) -> None:
         return
 
     today_iso = datetime.now(settings.tzinfo).date().isoformat()
-    rows = await db_get_upcoming_booked_appointments(today_iso, limit=20)
-    await _send_admin_appointments(call, rows, "Ближайших активных записей нет.", "Ближайшие активные записи:")
+    try:
+        rows = await db_get_upcoming_booked_appointments(today_iso, limit=20)
+        if rows:
+            await _send_admin_appointments(call, rows, "Ближайших активных записей нет.", "Ближайшие активные записи:")
+            return
+        counts = await db_get_admin_booking_counts()
+        await _send_admin_appointments(
+            call,
+            rows,
+            "Ближайших активных записей нет.\n\n"
+            f"Диагностика: всего записей в этой БД: {counts['total_count'] or 0}, "
+            f"активных booked: {counts['booked_count'] or 0}.",
+            "Ближайшие активные записи:",
+        )
+    except Exception as exc:
+        await call.message.edit_text(
+            "Не удалось загрузить ближайшие записи.\n\n"
+            f"Ошибка: {type(exc).__name__}: {_html_escape(exc)}",
+            reply_markup=admin_menu_kb(),
+        )
+        await call.answer()
 
 
 @router.callback_query(F.data.startswith("admin:complete:"))

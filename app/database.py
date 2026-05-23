@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import date, datetime
 import aiosqlite
 from pathlib import Path
 
@@ -21,6 +21,14 @@ class DBRow:
         return self._data.keys()
     def get(self, key, default=None):
         return self._data.get(key, default)
+
+
+def _date_iso(value) -> str:
+    if isinstance(value, datetime):
+        return value.date().isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)[:10]
 
 async def init_pool() -> None:
     global _pg_pool
@@ -942,12 +950,10 @@ async def db_get_booked_appointments_for_date(day_iso: str) -> list[DBRow]:
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at::date = $1::date
-                ORDER BY a.starts_at::timestamptz
+                ORDER BY a.starts_at
                 """,
-                day_iso,
             )
-            return [DBRow(dict(r)) for r in rows]
+            return [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) == day_iso]
     else:
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
@@ -958,13 +964,11 @@ async def db_get_booked_appointments_for_date(day_iso: str) -> list[DBRow]:
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND date(a.starts_at) = date(?)
                 ORDER BY a.starts_at
-                """,
-                (day_iso,),
+                """
             )
             rows = await cur.fetchall()
-            return [DBRow(dict(r)) for r in rows]
+            return [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) == day_iso]
 
 
 async def db_get_upcoming_booked_appointments(from_date_iso: str, limit: int = 20) -> list[DBRow]:
@@ -978,14 +982,11 @@ async def db_get_upcoming_booked_appointments(from_date_iso: str, limit: int = 2
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND a.starts_at::date >= $1::date
                 ORDER BY a.starts_at
-                LIMIT $2
                 """,
-                from_date_iso,
-                limit,
             )
-            return [DBRow(dict(r)) for r in rows]
+            upcoming = [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) >= from_date_iso]
+            return upcoming[:limit]
     else:
         async with aiosqlite.connect(DB_PATH) as db:
             db.row_factory = aiosqlite.Row
@@ -996,11 +997,35 @@ async def db_get_upcoming_booked_appointments(from_date_iso: str, limit: int = 2
                 JOIN clients c ON c.id = a.client_id
                 JOIN services s ON s.id = a.service_id
                 WHERE a.status = 'booked'
-                AND date(a.starts_at) >= date(?)
                 ORDER BY a.starts_at
-                LIMIT ?
-                """,
-                (from_date_iso, limit),
+                """
             )
             rows = await cur.fetchall()
-            return [DBRow(dict(r)) for r in rows]
+            upcoming = [row for row in (DBRow(dict(r)) for r in rows) if _date_iso(row["starts_at"]) >= from_date_iso]
+            return upcoming[:limit]
+
+
+async def db_get_admin_booking_counts() -> DBRow:
+    if DATABASE_URL:
+        async with _pg_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT
+                    COUNT(*) AS total_count,
+                    COUNT(*) FILTER (WHERE status = 'booked') AS booked_count
+                FROM appointments
+                """
+            )
+            return DBRow(dict(row))
+    async with aiosqlite.connect(DB_PATH) as db:
+        db.row_factory = aiosqlite.Row
+        cur = await db.execute(
+            """
+            SELECT
+                COUNT(*) AS total_count,
+                SUM(CASE WHEN status = 'booked' THEN 1 ELSE 0 END) AS booked_count
+            FROM appointments
+            """
+        )
+        row = await cur.fetchone()
+        return DBRow(dict(row))
