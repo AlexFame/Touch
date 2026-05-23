@@ -30,7 +30,7 @@ from app.validation import normalize_contact, normalize_name, valid_contact, val
 
 router = Router()
 
-STUDIO_MAPS_URL = "https://www.google.com/maps/search/?api=1&amp;query=Nonennengasse%20Stra%C3%9Fe%201%2C%2009599%20Freiberg"
+STUDIO_MAPS_URL = "https://maps.app.goo.gl/Vgdmj9TWPkVkUnEK6?g_st=ic"
 STUDIO_ADDRESS_LINK = f'<a href="{STUDIO_MAPS_URL}">Nonennengasse Straße 1, Freiberg 09599</a>'
 
 WELCOME_TEXTS = {

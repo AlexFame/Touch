@@ -15,7 +15,7 @@ import {
 } from "./ui";
 
 const STUDIO_MAPS_URL =
-  "https://www.google.com/maps/search/?api=1&query=Nonennengasse%20Stra%C3%9Fe%201%2C%2009599%20Freiberg";
+  "https://maps.app.goo.gl/Vgdmj9TWPkVkUnEK6?g_st=ic";
 
 function openStudioMaps(event) {
   const webApp = window.Telegram?.WebApp;
