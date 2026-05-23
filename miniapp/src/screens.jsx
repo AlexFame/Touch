@@ -13,6 +13,31 @@ import {
   TopBar,
 } from "./ui";
 
+const STUDIO_MAPS_URL =
+  "https://www.google.com/maps/search/?api=1&query=Nonennengasse%20Stra%C3%9Fe%201%2C%2009599%20Freiberg";
+
+function openStudioMaps(event) {
+  const webApp = window.Telegram?.WebApp;
+  if (webApp?.openLink) {
+    event.preventDefault();
+    webApp.openLink(STUDIO_MAPS_URL);
+  }
+}
+
+function StudioAddressLink({ tr, className = "" }) {
+  return (
+    <a
+      className={className}
+      href={STUDIO_MAPS_URL}
+      onClick={openStudioMaps}
+      rel="noreferrer"
+      target="_blank"
+    >
+      {tr.studioAddress}
+    </a>
+  );
+}
+
 export function HomeScreen({
   error,
   imageSources,
@@ -131,7 +156,7 @@ export function MyBookingsScreen({
                   {ab.starts_at.split("T")[1].slice(0, 5)}
                 </span>
                 <span className="muted">
-                  {tr.addressLabel}: {tr.studioAddress}
+                  {tr.addressLabel}: <StudioAddressLink tr={tr} className="address-link" />
                 </span>
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
@@ -495,7 +520,7 @@ export function DoneScreen({ booking, imageSrc, isReschedule, onHome, tr }) {
         </div>
         <div className="done-card address-card">
           <b>{tr.addressLabel}</b>
-          <span>{tr.studioAddress}</span>
+          <StudioAddressLink tr={tr} className="address-link" />
         </div>
         <p className="muted">{tr.telegramConfirmation}</p>
       </div>

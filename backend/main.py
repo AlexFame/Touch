@@ -61,6 +61,9 @@ class RescheduleRequest(BaseModel):
 
 logger = logging.getLogger("uvicorn.error")
 
+STUDIO_MAPS_URL = "https://www.google.com/maps/search/?api=1&amp;query=Nonennengasse%20Stra%C3%9Fe%201%2C%2009599%20Freiberg"
+STUDIO_ADDRESS_LINK = f'<a href="{STUDIO_MAPS_URL}">Nonennengasse Straße 1, Freiberg 09599</a>'
+
 
 @app.on_event("startup")
 async def startup() -> None:
@@ -301,6 +304,7 @@ async def create_booking(
         f"{client_title}\n"
         f"{start.strftime('%d.%m.%Y')} в {start.strftime('%H:%M')}\n"
         f"{duration} мин · {service['price_eur']}€\n\n"
+        f"Адрес: {STUDIO_ADDRESS_LINK}\n\n"
         "За сутки до визита я напомню вам о сеансе 🐾"
     )
     admin_text = "Новая запись через Mini App:\n\n" + admin_summary
@@ -539,6 +543,7 @@ async def reschedule_booking_endpoint(
         f"{client_title}\n"
         f"{start.strftime('%d.%m.%Y')} в {start.strftime('%H:%M')}\n"
         f"{duration} мин · {service['price_eur']}€\n\n"
+        f"Адрес: {STUDIO_ADDRESS_LINK}\n\n"
         "За сутки до визита я напомню вам о сеансе 🐾"
     )
     from app.handlers import get_appointment_admin_summary
