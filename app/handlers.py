@@ -521,8 +521,8 @@ async def admin_upcoming(call: CallbackQuery, settings: Settings) -> None:
         await call.answer("No access")
         return
 
-    now_iso = datetime.now(settings.tzinfo).isoformat()
-    rows = await db_get_upcoming_booked_appointments(now_iso, limit=20)
+    today_iso = datetime.now(settings.tzinfo).date().isoformat()
+    rows = await db_get_upcoming_booked_appointments(today_iso, limit=20)
     await _send_admin_appointments(call, rows, "Ближайших активных записей нет.", "Ближайшие активные записи:")
 
 
