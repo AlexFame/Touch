@@ -2,6 +2,7 @@ import os
 from datetime import date, datetime
 import aiosqlite
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     import asyncpg
@@ -1029,3 +1030,13 @@ async def db_get_admin_booking_counts() -> DBRow:
         )
         row = await cur.fetchone()
         return DBRow(dict(row))
+
+
+def db_admin_storage_label() -> str:
+    if not DATABASE_URL:
+        return f"SQLite: {DB_PATH}"
+
+    parsed = urlparse(DATABASE_URL)
+    host = parsed.hostname or "unknown-host"
+    database = parsed.path.lstrip("/") or "unknown-db"
+    return f"PostgreSQL: {host}/{database}"
