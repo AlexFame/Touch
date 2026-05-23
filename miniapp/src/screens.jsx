@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Clock,
+  MapPin,
   PawPrint,
 } from "lucide-react";
 import {
@@ -33,7 +34,11 @@ function StudioAddressLink({ tr, className = "" }) {
       rel="noreferrer"
       target="_blank"
     >
-      {tr.studioAddress}
+      <span className="address-line">
+        <MapPin size={16} aria-hidden="true" />
+        <span>{tr.studioAddress}</span>
+      </span>
+      <small>{tr.openInMapsHint}</small>
     </a>
   );
 }
