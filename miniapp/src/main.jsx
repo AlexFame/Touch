@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   BookingFlow,
@@ -260,6 +260,7 @@ function App() {
   const [lang] = useState(() => getInitialLang(tg));
   const tr = UI_TEXT[lang];
   const backendLang = apiLang(lang);
+  const navigationTimerRef = useRef(null);
   const [initialState] = useState(readSavedState);
   const [step, setStep] = useState(initialState.step || "home");
   const [bookingSource, setBookingSource] = useState(
@@ -365,6 +366,14 @@ function App() {
   }, [backendLang, tr]);
 
   useEffect(() => {
+    return () => {
+      if (navigationTimerRef.current) {
+        window.clearTimeout(navigationTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     if (typeof window === "undefined") return undefined;
 
     const root = document.documentElement;
@@ -458,6 +467,17 @@ function App() {
   const packageOptions = selectedInfoService
     ? createPackageOptions(selectedInfoService, tr)
     : [];
+
+  function navigateSoft(action) {
+    if (navigationTimerRef.current) {
+      window.clearTimeout(navigationTimerRef.current);
+    }
+    tg?.HapticFeedback?.impactOccurred("light");
+    navigationTimerRef.current = window.setTimeout(() => {
+      navigationTimerRef.current = null;
+      action();
+    }, 90);
+  }
 
   function createPackageOptions(service, text) {
     const prices = PACKAGE_PRICES[service.id] || {};
@@ -737,14 +757,18 @@ function App() {
               error={error}
               imageSources={IMAGE_SOURCES}
               onBook={() => {
-                setSelectedInfoService(null);
-                setBookingSource("service");
-                setStep("service");
+                navigateSoft(() => {
+                  setSelectedInfoService(null);
+                  setBookingSource("service");
+                  setStep("service");
+                });
               }}
-              onMyBookings={loadMyBookings}
+              onMyBookings={() => navigateSoft(loadMyBookings)}
               onServices={() => {
-                setSelectedInfoService(null);
-                setStep("servicesInfo");
+                navigateSoft(() => {
+                  setSelectedInfoService(null);
+                  setStep("servicesInfo");
+                });
               }}
               tr={tr}
             />
@@ -756,14 +780,16 @@ function App() {
               formatDay={formatDay}
               imageSources={IMAGE_SOURCES}
               lang={lang}
-              onBack={goHome}
+              onBack={() => navigateSoft(goHome)}
               onBook={() => {
-                setSelectedInfoService(null);
-                setBookingSource("service");
-                setStep("service");
+                navigateSoft(() => {
+                  setSelectedInfoService(null);
+                  setBookingSource("service");
+                  setStep("service");
+                });
               }}
-              onCancel={cancelBooking}
-              onReschedule={startReschedule}
+              onCancel={(bookingToCancel) => navigateSoft(() => cancelBooking(bookingToCancel))}
+              onReschedule={(bookingToReschedule) => navigateSoft(() => startReschedule(bookingToReschedule))}
               tr={tr}
             />
           )}
@@ -774,19 +800,21 @@ function App() {
               formatDay={formatDay}
               imageSources={IMAGE_SOURCES}
               lang={lang}
-              onHome={goHome}
+              onHome={() => navigateSoft(goHome)}
               onMyBookings={async () => {
-                setError("");
-                preloadImage(IMAGE_SOURCES.myBookings);
-                preloadImage(IMAGE_SOURCES.noBookings);
-                try {
-                  const updated = await api(`/api/active-bookings?lang=${backendLang}`);
-                  setActiveBookings(updated || []);
-                  setCancelledBooking(null);
-                  setStep("myBooking");
-                } catch (e) {
-                  setError(errorText(e, tr) || tr.noBookingsLoadFailed);
-                }
+                navigateSoft(async () => {
+                  setError("");
+                  preloadImage(IMAGE_SOURCES.myBookings);
+                  preloadImage(IMAGE_SOURCES.noBookings);
+                  try {
+                    const updated = await api(`/api/active-bookings?lang=${backendLang}`);
+                    setActiveBookings(updated || []);
+                    setCancelledBooking(null);
+                    setStep("myBooking");
+                  } catch (e) {
+                    setError(errorText(e, tr) || tr.noBookingsLoadFailed);
+                  }
+                });
               }}
               tr={tr}
             />
@@ -798,13 +826,15 @@ function App() {
             ) : selectedInfoService ? (
               <ServiceDetailsScreen
                 imageSrc={IMAGE_SOURCES.services}
-                onBack={() => setSelectedInfoService(null)}
+                onBack={() => navigateSoft(() => setSelectedInfoService(null))}
                 onBook={() => {
-                  if (packageOptions.length > 1) {
-                    setStep("packageChoice");
-                    return;
-                  }
-                  startBooking(selectedInfoService, "servicesInfo");
+                  navigateSoft(() => {
+                    if (packageOptions.length > 1) {
+                      setStep("packageChoice");
+                      return;
+                    }
+                    startBooking(selectedInfoService, "servicesInfo");
+                  });
                 }}
                 service={selectedInfoService}
                 tr={tr}
@@ -813,8 +843,8 @@ function App() {
               <ServicesScreen
                 actionLabel={tr.moreDetails}
                 imageSrc={IMAGE_SOURCES.services}
-                onBack={() => setStep("home")}
-                onSelectService={setSelectedInfoService}
+                onBack={() => navigateSoft(() => setStep("home"))}
+                onSelectService={(service) => navigateSoft(() => setSelectedInfoService(service))}
                 services={services}
                 title={tr.servicesAndPrices}
                 tr={tr}
@@ -824,8 +854,8 @@ function App() {
 
           {step === "packageChoice" && selectedInfoService && (
             <PackageChoiceScreen
-              onBack={() => setStep("servicesInfo")}
-              onSelect={(option) => startBooking(option, "servicesInfo")}
+              onBack={() => navigateSoft(() => setStep("servicesInfo"))}
+              onSelect={(option) => navigateSoft(() => startBooking(option, "servicesInfo"))}
               options={packageOptions}
               service={selectedInfoService}
               tr={tr}
@@ -838,9 +868,9 @@ function App() {
             ) : (
               <ServicesScreen
                 imageSrc={IMAGE_SOURCES.date}
-                onBack={() => setStep("home")}
+                onBack={() => navigateSoft(() => setStep("home"))}
                 onSelectService={(s) => {
-                  startBooking(s, "service");
+                  navigateSoft(() => startBooking(s, "service"));
                 }}
                 services={services}
                 title={tr.chooseMassage}
@@ -860,8 +890,8 @@ function App() {
               imageSources={IMAGE_SOURCES}
               lang={lang}
               name={name}
-              onBackToBookingSource={() => setStep(bookingSource)}
-              onChooseTime={() => setStep("time")}
+              onBackToBookingSource={() => navigateSoft(() => setStep(bookingSource))}
+              onChooseTime={() => navigateSoft(() => setStep("time"))}
               onContactChange={setContact}
               onNameChange={setName}
               onSelectDay={(day) => {
@@ -869,13 +899,13 @@ function App() {
                 setSelectedDay(day);
               }}
               onSelectSlot={setSelectedSlot}
-              onSubmit={submitBooking}
-              onTimeBack={() => setStep("day")}
+              onSubmit={() => navigateSoft(submitBooking)}
+              onTimeBack={() => navigateSoft(() => setStep("day"))}
               rescheduleBookingId={rescheduleBookingId}
               selectedDay={selectedDay}
               selectedService={selectedService}
               selectedSlot={selectedSlot}
-              setStep={setStep}
+              setStep={(nextStep) => navigateSoft(() => setStep(nextStep))}
               slots={slots}
               slotsLoading={slotsLoading}
               step={step}
@@ -889,7 +919,7 @@ function App() {
               booking={booking}
               imageSrc={IMAGE_SOURCES.rescheduled}
               isReschedule
-              onHome={goHome}
+              onHome={() => navigateSoft(goHome)}
               tr={tr}
             />
           )}
@@ -898,7 +928,7 @@ function App() {
             <DoneScreen
               booking={booking}
               imageSrc={IMAGE_SOURCES.booked}
-              onHome={goHome}
+              onHome={() => navigateSoft(goHome)}
               tr={tr}
             />
           )}
