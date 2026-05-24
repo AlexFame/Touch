@@ -19,11 +19,12 @@ button {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   transform: translateZ(0);
-  transition: transform 0.12s ease, opacity 0.12s ease;
+  transition: transform 0.1s ease, opacity 0.12s ease, filter 0.1s ease, box-shadow 0.1s ease;
 }
 
 button:active:not(:disabled) {
-  transform: translateY(1px) scale(0.985);
+  filter: brightness(0.92);
+  transform: translateY(2px) scale(0.965);
 }
 
 /* =====================================================
@@ -183,6 +184,7 @@ h3 { margin: 0 0 6px; font-size: 17px; }
 .primary { background: linear-gradient(135deg, #8c63d9, #6845a8); }
 .primary:disabled { opacity: .45; }
 .secondary { background: rgba(255,255,255,.07); border: 1px solid var(--line); color: #e7e1f7; }
+.primary:active:not(:disabled), .secondary:active:not(:disabled), .service-card:active:not(:disabled), .day:active:not(:disabled), .slot:active:not(:disabled), .topbar button:active:not(:disabled) { box-shadow: inset 0 3px 12px rgba(0,0,0,.24); }
 .topbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 16px; }
 .topbar button { width: 42px; height: 42px; border-radius: 15px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: white; font-size: 30px; line-height: 20px; }
 .topbar h2 { text-align: center; }
