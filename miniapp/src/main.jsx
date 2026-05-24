@@ -293,7 +293,7 @@ function App() {
   const [rescheduleBookingId, setRescheduleBookingId] = useState(
     initialState.rescheduleBookingId || null,
   );
-  const [loading, setLoading] = useState(!initialState.restored);
+  const [bootstrapping, setBootstrapping] = useState(!initialState.restored);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -355,11 +355,11 @@ function App() {
         setContact((current) => current || meData.contact || meData.phone || "");
         setServices(servicesData);
         setDays(daysData);
-        setLoading(false);
+        setBootstrapping(false);
       })
       .catch((e) => {
         setError(errorText(e, tr));
-        setLoading(false);
+        setBootstrapping(false);
       });
     return cancelDeferredPreload;
   }, [backendLang, tr]);
@@ -718,15 +718,7 @@ function App() {
     };
   }, [step, bookingSource, selectedInfoService]);
 
-  if (loading) {
-    return (
-      <Shell>
-        <div className="loader">{tr.loading}</div>
-      </Shell>
-    );
-  }
-
-  if (error && !me) {
+  if (error && !me && step !== "home" && !bootstrapping) {
     return (
       <Shell>
         <ErrorBox text={error} />
@@ -801,7 +793,9 @@ function App() {
           )}
 
           {step === "servicesInfo" && (
-            selectedInfoService ? (
+            services.length === 0 && bootstrapping ? (
+              <div className="loader">{tr.loading}</div>
+            ) : selectedInfoService ? (
               <ServiceDetailsScreen
                 imageSrc={IMAGE_SOURCES.services}
                 onBack={() => setSelectedInfoService(null)}
@@ -839,16 +833,20 @@ function App() {
           )}
 
           {step === "service" && (
-            <ServicesScreen
-              imageSrc={IMAGE_SOURCES.date}
-              onBack={() => setStep("home")}
-              onSelectService={(s) => {
-                startBooking(s, "service");
-              }}
-              services={services}
-              title={tr.chooseMassage}
-              tr={tr}
-            />
+            services.length === 0 && bootstrapping ? (
+              <div className="loader">{tr.loading}</div>
+            ) : (
+              <ServicesScreen
+                imageSrc={IMAGE_SOURCES.date}
+                onBack={() => setStep("home")}
+                onSelectService={(s) => {
+                  startBooking(s, "service");
+                }}
+                services={services}
+                title={tr.chooseMassage}
+                tr={tr}
+              />
+            )
           )}
 
           {(step === "day" || step === "time" || step === "details") && (
