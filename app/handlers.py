@@ -1,11 +1,12 @@
 from datetime import date, datetime, timedelta
 import html
+from pathlib import Path
 
 from aiogram import F, Router, Bot
 from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, FSInputFile, Message
 
 from app.booking import first_visit_bonus_available, format_summary, get_free_slots, parse_local_datetime
 from app.calendar_client import CalendarClient
@@ -30,6 +31,7 @@ from app.validation import normalize_contact, normalize_name, valid_contact, val
 
 router = Router()
 
+WELCOME_PHOTO_PATH = Path(__file__).resolve().parent / "assets" / "andrey-welcome.jpeg"
 STUDIO_MAPS_URL = "https://maps.app.goo.gl/Vgdmj9TWPkVkUnEK6?g_st=ic"
 STUDIO_ADDRESS_LINK = f'<a href="{STUDIO_MAPS_URL}">Nonennengasse Straße 1, Freiberg 09599</a>'
 
@@ -39,6 +41,7 @@ WELCOME_TEXTS = {
         "Меня зовут Андрей. Я дипломированный специалист по wellness-массажу с опытом более 16 лет.\n\n"
         "Wellness-массаж - это не медицинская услуга, а формат для расслабления, отдыха и общего ощущения лёгкости после нагрузки или долгого дня.\n\n"
         "Если у вас есть острые боли, травмы, воспаления или медицинские противопоказания, пожалуйста, сначала проконсультируйтесь с врачом.\n\n"
+        "Я нахожусь в городе Фрайберг 09599 (Саксония).\n\n"
         "Здесь вы можете выбрать услугу, дату и удобное время для визита.\n\n"
         "Добро пожаловать!"
     ),
@@ -47,6 +50,7 @@ WELCOME_TEXTS = {
         "Мене звати Андрій. Я дипломований спеціаліст з wellness-масажу з досвідом понад 16 років.\n\n"
         "Wellness-масаж - це не медична послуга, а формат для розслаблення, відпочинку та загального відчуття легкості після навантаження або довгого дня.\n\n"
         "Якщо у вас є гострий біль, травми, запалення або медичні протипоказання, будь ласка, спочатку проконсультуйтеся з лікарем.\n\n"
+        "Я знаходжуся в місті Фрайберг 09599 (Саксонія).\n\n"
         "Тут ви можете вибрати послугу, дату і зручний час для візиту.\n\n"
         "Ласкаво просимо!"
     ),
@@ -183,8 +187,9 @@ async def start(message: Message, state: FSMContext, settings: Settings) -> None
     await db_ensure_client(message.from_user.id, lang)
     await db_update_client_lang(message.from_user.id, lang)
     admin = is_admin(message.from_user.id, settings)
-    await message.answer(
-        admin_welcome_text() if admin else welcome_text(lang),
+    await message.answer_photo(
+        FSInputFile(WELCOME_PHOTO_PATH),
+        caption=welcome_text(lang),
         reply_markup=open_miniapp_kb(
             settings.webapp_url,
             is_admin=admin,
