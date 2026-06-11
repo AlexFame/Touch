@@ -35,12 +35,12 @@ const IMAGE_SOURCES = {
 
 const PACKAGE_PRICES = {
   classic_back: {
-    5: { price: 90, original: 100 },
-    10: { price: 175, original: 200 },
+    5: { price: 90, original: 125 },
+    10: { price: 175, original: 250 },
   },
   relax: {
-    5: { price: 90, original: 100 },
-    10: { price: 175, original: 200 },
+    5: { price: 90, original: 125 },
+    10: { price: 175, original: 250 },
   },
   anti_cellulite: {
     5: { price: 135, original: 150 },
