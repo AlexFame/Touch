@@ -124,6 +124,8 @@ def current_user(init_data: str | None = None, x_telegram_init_data: str | None 
         return verify_init_data(raw)
     if settings.dev_telegram_id:
         return {"id": settings.dev_telegram_id, "username": "dev_user"}
+    if settings.app_env != "production" and settings.admin_ids:
+        return {"id": settings.admin_ids[0], "username": "local_dev"}
     raise HTTPException(status_code=401, detail="Open this page from Telegram Mini App")
 
 

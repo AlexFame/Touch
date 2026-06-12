@@ -261,8 +261,11 @@ function App() {
   const tr = UI_TEXT[lang];
   const backendLang = apiLang(lang);
   const navigationTimerRef = useRef(null);
+  const navigationReleaseTimerRef = useRef(null);
   const [initialState] = useState(readSavedState);
   const [step, setStep] = useState(initialState.step || "home");
+  const [startupImageReady, setStartupImageReady] = useState(false);
+  const [contentTransitioning, setContentTransitioning] = useState(false);
   const [bookingSource, setBookingSource] = useState(
     initialState.bookingSource || "service",
   );
@@ -343,6 +346,9 @@ function App() {
   useEffect(() => {
     tg?.ready?.();
     const cancelDeferredPreload = preloadDeferredImages();
+    preloadImage(IMAGE_SOURCES.hello).finally(() => {
+      setStartupImageReady(true);
+    });
     Promise.all([
       api("/api/me"),
       api(`/api/services?lang=${backendLang}`),
@@ -369,6 +375,9 @@ function App() {
     return () => {
       if (navigationTimerRef.current) {
         window.clearTimeout(navigationTimerRef.current);
+      }
+      if (navigationReleaseTimerRef.current) {
+        window.clearTimeout(navigationReleaseTimerRef.current);
       }
     };
   }, []);
@@ -472,11 +481,19 @@ function App() {
     if (navigationTimerRef.current) {
       window.clearTimeout(navigationTimerRef.current);
     }
+    if (navigationReleaseTimerRef.current) {
+      window.clearTimeout(navigationReleaseTimerRef.current);
+    }
     tg?.HapticFeedback?.impactOccurred("light");
+    setContentTransitioning(true);
     navigationTimerRef.current = window.setTimeout(() => {
       navigationTimerRef.current = null;
       action();
-    }, 90);
+      navigationReleaseTimerRef.current = window.setTimeout(() => {
+        navigationReleaseTimerRef.current = null;
+        setContentTransitioning(false);
+      }, 90);
+    }, 80);
   }
 
   function createPackageOptions(service, text) {
@@ -751,8 +768,12 @@ function App() {
   return (
     <Shell>
       <section className={sectionClassName}>
-        <div className="screen-content">
-          {step === "home" && (
+        <div className={`screen-content${contentTransitioning ? " is-soft-switching" : ""}`}>
+          {step === "home" && !startupImageReady && (
+            <div className="loader">{tr.loading}</div>
+          )}
+
+          {step === "home" && startupImageReady && (
             <HomeScreen
               error={error}
               imageSources={IMAGE_SOURCES}
