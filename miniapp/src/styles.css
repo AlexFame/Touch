@@ -196,9 +196,9 @@ h3 { margin: 0 0 6px; font-size: 17px; }
 .primary:disabled { opacity: .45; }
 .secondary { background: rgba(255,255,255,.07); border: 1px solid var(--line); color: #e7e1f7; }
 .primary:active:not(:disabled), .secondary:active:not(:disabled), .service-card:active:not(:disabled), .day:active:not(:disabled), .slot:active:not(:disabled), .topbar button:active:not(:disabled) { box-shadow: inset 0 3px 12px rgba(0,0,0,.24); }
-.topbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; margin-bottom: 16px; }
+.topbar { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; column-gap: 8px; margin-bottom: 16px; }
 .topbar button { width: 42px; height: 42px; border-radius: 15px; background: rgba(255,255,255,.07); border: 1px solid var(--line); color: white; font-size: 30px; line-height: 20px; }
-.topbar h2 { text-align: center; }
+.topbar h2 { text-align: center; min-width: 0; overflow: hidden; overflow-wrap: anywhere; line-height: 1.12; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .list { display: grid; gap: 12px; }
 .service-card { width: 100%; display: flex; align-items: stretch; justify-content: space-between; gap: 12px; text-align: left; padding: 0 16px; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: white; -webkit-appearance: none; appearance: none; min-height: 72px; }
 .service-card > div { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; padding: 14px 0; }

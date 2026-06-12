@@ -368,7 +368,7 @@ async def choose_time(call: CallbackQuery, state: FSMContext) -> None:
 async def enter_name(message: Message, state: FSMContext) -> None:
     lang = await get_lang(message.from_user.id)
     name = normalize_name(message.text)
-    if not valid_name(name):
+    if not valid_name(message.text):
         await message.answer(t(lang, "invalid_name"))
         return
     await state.update_data(name=name)
@@ -380,7 +380,7 @@ async def enter_name(message: Message, state: FSMContext) -> None:
 async def enter_contact(message: Message, state: FSMContext, settings: Settings) -> None:
     lang = await get_lang(message.from_user.id)
     contact = normalize_contact(message.text or "")
-    if not valid_contact(contact):
+    if not valid_contact(message.text or ""):
         await message.answer(t(lang, "invalid_contact"))
         return
     data = await state.get_data()

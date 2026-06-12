@@ -140,9 +140,9 @@ def service_title(row, lang: str) -> str:
 def validate_client_fields(name: str, contact: str | None) -> tuple[str, str]:
     clean_name = normalize_name(name)
     clean_contact = normalize_contact(contact)
-    if not valid_name(clean_name):
+    if not valid_name(name):
         raise HTTPException(status_code=422, detail="Invalid name")
-    if not valid_contact(clean_contact):
+    if not valid_contact(contact):
         raise HTTPException(status_code=422, detail="Invalid contact")
     return clean_name, clean_contact
 
