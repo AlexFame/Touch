@@ -134,12 +134,11 @@ main > section::-webkit-scrollbar { display: none; width: 0; }
 
 .screen-content {
   width: 100%;
-  transition: opacity 0.16s ease, transform 0.16s ease;
+  transition: transform 0.16s ease;
   transform: translateZ(0);
 }
 
 .screen-content.is-soft-switching {
-  opacity: .84;
   pointer-events: none;
   transform: translate3d(0, 4px, 0) scale(.995);
 }
@@ -168,7 +167,6 @@ main > section::-webkit-scrollbar { display: none; width: 0; }
   }
 
   .screen-content.is-soft-switching {
-    opacity: 1;
     transform: none;
   }
 }
